@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群組設定 - <span th:text="${group.name}"></span></title>
+    <link rel="stylesheet" href="/css/group-settings.css">
+</head>
+<body>
+    <div class="settings-container">
+        <!-- 頂部導航 -->
+        <nav class="top-nav">
+            <div class="nav-left">
+                <a th:href="@{/group/{id}(id=${group.id})}" class="back-btn">← 返回聊天</a>
+                <h2>群組設定</h2>
+            </div>
+        </nav>
+
+        <!-- 成功/錯誤訊息 -->
+        <div th:if="${success}" class="success-message" th:text="${success}"></div>
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <div class="settings-content">
+            <!-- 群組資訊區域 -->
+            <section class="settings-section">
+                <h3>群組頭像</h3>
+                <div class="avatar-section">
+                    <div class="current-avatar">
+                        <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                             alt="群組頭像" class="avatar-preview" id="avatarPreview">
+                    </div>
+                    <div class="avatar-controls">
+                        <form th:action="@{/groups/{id}/upload-avatar(id=${group.id})}"
+                              method="post" enctype="multipart/form-data" class="upload-form">
+                            <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;">
+                            <button type="button" onclick="document.getElementById('avatarInput').click()"
+                                    class="btn btn-primary">選擇新頭像</button>
+                            <button type="submit" class="btn btn-success" id="uploadBtn" style="display: none;">
+                                上傳
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 基本設定 -->
+            <section class="settings-section">
+                <h3>基本設定</h3>
+                <form th:action="@{/groups/{id}/update(id=${group.id})}" method="post" class="settings-form">
+                    <div class="form-group">
+                        <label for="name">群組名稱 *</label>
+                        <input type="text" id="name" name="name" th:value="${group.name}" required maxlength="50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">群組描述</label>
+                        <textarea id="description" name="description" rows="3"
+                                  maxlength="200" th:text="${group.description}"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="isPrivate" value="true"
+                                   th:checked="${group.private}">
+                            <span class="checkmark"></span>
+                            <div class="checkbox-content">
+                                <strong>私人群組</strong>
+                                <p>只有受邀用戶才能加入</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">更新設定</button>
+                </form>
+            </section>
+
+            <!-- 群組統計 -->
+            <section class="settings-section">
+                <h3>群組統計</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${groupStats.memberCount}"></div>
+                        <div class="stat-label">成員數量</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${groupStats.messageCount}"></div>
+                        <div class="stat-label">訊息總數</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${#temporals.format(groupStats.createdAt, 'MM/dd')}"></div>
+                        <div class="stat-label">創建日期</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 成員管理 -->
+            <section class="settings-section">
+                <h3>成員管理</h3>
+                <div class="members-list">
+                    <div th:each="member : ${group.members}" class="member-item">
+                        <div class="member-info">
+                            <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                                 alt="頭像" class="member-avatar">
+                            <div class="member-details">
+                                <div class="member-name" th:text="${member.displayName}"></div>
+                                <div class="member-status">
+                                    <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
+                                    <span th:unless="${group.creator.equals(member)}"
+                                          th:text="${member.online ? '線上' : '離線'}"
+                                          th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="member-actions" th:unless="${group.creator.equals(member)}">
+                            <button onclick="removeMember(${member.id}, '${member.displayName}')"
+                                    class="btn btn-danger btn-sm">移除</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 危險區域 -->
+            <section class="settings-section danger-section">
+                <h3>危險操作</h3>
+                <div class="danger-actions">
+                    <div class="danger-item">
+                        <div class="danger-info">
+                            <h4>解散群組</h4>
+                            <p>永久刪除這個群組和所有聊天記錄</p>
+                        </div>
+                        <button onclick="confirmDissolve()" class="btn btn-danger">解散群組</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // 頭像預覽功能
+        document.getElementById('avatarInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('avatarPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                document.getElementById('uploadBtn').style.display = 'inline-block';
+            }
+        });
+
+        // 移除成員
+        function removeMember(userId, userName) {
+            if (confirm(`確定要將 ${userName} 移出群組嗎？`)) {
+                fetch(`/api/groups/${[[${group.id}]]}/members/${userId}/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            alert('移除成員失敗');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('操作失敗');
+                    });
+            }
+        }
+
+        // 確認解散群組
+        function confirmDissolve() {
+            const groupName = '[[${group.name}]]';
+            if (confirm(`確定要解散群組「${groupName}」嗎？此操作無法撤銷！`)) {
+                if (confirm('這將會永久刪除所有聊天記錄，您確定要繼續嗎？')) {
+                    // 這裡可以添加解散群組的API調用
+                    alert('解散群組功能尚未實現');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

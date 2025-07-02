@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${chatType == 'group' ? '群組聊天 - ' + group.name : '私人聊天'}"></title>
+    <link rel="stylesheet" href="/css/chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 左側面板 -->
+        <div class="users-panel" th:if="${chatType == 'private'}">
+            <!-- 原有的私人聊天用戶列表 -->
+            <div class="user-header">
+                <div class="current-user-info">
+                    <div class="current-user-avatar">
+                        <img th:src="${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                             alt="我的頭像" class="avatar-img">
+                    </div>
+                    <div class="current-user-details">
+                        <span class="current-user-name" th:text="${currentUser.displayName}"></span>
+                        <div class="user-actions">
+                            <a href="/home" class="profile-btn">首頁</a>
+                            <a href="/profile" class="profile-btn">編輯資料</a>
+                            <a href="/logout" class="logout-btn">登出</a>
+                        </div>
+                    </div>
+                </div>
+                <h3>線上用戶</h3>
+            </div>
+            <div class="users-list" id="usersList">
+                <div th:each="user : ${users}"
+                     th:if="${user.username != currentUser.username}"
+                     class="user-item"
+                     th:data-username="${user.username}"
+                     th:onclick="'selectUser(this)'">
+                    <div class="user-avatar">
+                        <img th:src="${user.avatarUrl != null ? '/uploads/avatars/' + user.avatarUrl.substring(user.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                             alt="用戶頭像" class="avatar-img">
+                        <div class="online-indicator" th:classappend="${user.online ? 'online' : 'offline'}"></div>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" th:text="${user.displayName}"></div>
+                        <div class="user-status" th:text="${user.online ? '線上' : '離線'}"></div>
+                        <div class="user-bio" th:if="${user.bio != null and !user.bio.isEmpty()}"
+                             th:text="${user.bio.length() > 30 ? user.bio.substring(0, 30) + '...' : user.bio}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 群組成員面板 -->
+        <div class="users-panel" th:if="${chatType == 'group'}">
+            <div class="user-header">
+                <div class="group-info">
+                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                         alt="群組頭像" class="group-avatar">
+                    <div class="group-details">
+                        <h3 th:text="${group.name}"></h3>
+                        <p th:text="${group.members.size()} + ' 位成員'"></p>
+                        <div class="group-actions">
+                            <a href="/home" class="profile-btn">首頁</a>
+                            <a th:if="${group.creator.username == currentUser.username}"
+                               th:href="@{/groups/{id}/settings(id=${group.id})}"
+                               class="profile-btn">設定</a>
+                            <a href="/logout" class="logout-btn">登出</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="users-list">
+                <div th:each="member : ${group.members}" class="user-item">
+                    <div class="user-avatar">
+                        <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                             alt="成員頭像" class="avatar-img">
+                        <div class="online-indicator" th:classappend="${member.online ? 'online' : 'offline'}"></div>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" th:text="${member.displayName}"></div>
+                        <div class="user-status">
+                            <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
+                            <span th:unless="${group.creator.equals(member)}"
+                                  th:text="${member.online ? '線上' : '離線'}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側聊天區域 -->
+        <div class="chat-panel">
+            <div class="chat-header" id="chatHeader">
+                <div th:if="${chatType == 'private'}">
+                    <h3>選擇一個用戶開始聊天</h3>
+                </div>
+                <div th:if="${chatType == 'group'}" class="group-chat-header">
+                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                         alt="群組頭像" class="chat-header-avatar">
+                    <div class="chat-header-info">
+                        <h3 th:text="${group.name}"></h3>
+                        <p th:text="${group.members.size()} + ' 位成員'"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <!-- 訊息會在這裡顯示 -->
+            </div>
+
+            <div class="message-input-container"
+                 th:style="${chatType == 'group' ? 'display: block;' : 'display: none;'}"
+                 id="messageInputContainer">
+                <div class="message-input">
+                    <input type="text" id="messageInput" placeholder="輸入訊息..." />
+                    <button id="sendButton">發送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script th:inline="javascript">
+        var currentUser = /*[[${currentUser.username}]]*/ '';
+        var currentUserDisplayName = /*[[${currentUser.displayName}]]*/ '';
+        var currentUserAvatar = /*[[${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}]]*/ '';
+        var chatType = /*[[${chatType}]]*/ 'private';
+        var groupId = /*[[${group?.id}]]*/ null;
+        var groupName = /*[[${group?.name}]]*/ null;
+    </script>
+    <script src="/js/chat.js"></script>
+</body>
+</html>

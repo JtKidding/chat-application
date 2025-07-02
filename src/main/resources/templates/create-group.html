@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>創建群組 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/create-group.css">
+</head>
+<body>
+    <div class="create-group-container">
+        <!-- 頂部導航 -->
+        <nav class="top-nav">
+            <div class="nav-left">
+                <a href="/groups" class="back-btn">← 返回群組</a>
+                <h2>創建新群組</h2>
+            </div>
+        </nav>
+
+        <!-- 表單區域 -->
+        <div class="form-container">
+            <div class="form-card">
+                <div class="form-header">
+                    <div class="form-icon">👥</div>
+                    <h3>創建您的群組</h3>
+                    <p>設定群組資訊以開始與其他用戶聊天</p>
+                </div>
+
+                <form th:action="@{/groups/create}" method="post" class="create-form">
+                    <div class="form-group">
+                        <label for="name">群組名稱 *</label>
+                        <input type="text" id="name" name="name" required
+                               placeholder="輸入群組名稱" maxlength="50">
+                        <small>最多50個字符</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">群組描述</label>
+                        <textarea id="description" name="description"
+                                  placeholder="描述這個群組的用途..."
+                                  rows="3" maxlength="200"></textarea>
+                        <small>最多200個字符</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="isPrivate" value="true">
+                            <span class="checkmark"></span>
+                            <div class="checkbox-content">
+                                <strong>私人群組</strong>
+                                <p>只有受邀用戶才能加入這個群組</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="privacy-info">
+                            <div class="info-item">
+                                <span class="icon">🔓</span>
+                                <div class="info-content">
+                                    <strong>公開群組</strong>
+                                    <p>任何用戶都可以搜尋並加入</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <span class="icon">🔒</span>
+                                <div class="info-content">
+                                    <strong>私人群組</strong>
+                                    <p>需要邀請才能加入</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/groups" class="btn btn-secondary">取消</a>
+                        <button type="submit" class="btn btn-primary">創建群組</button>
+                    </div>
+                </form>
+
+                <!-- 創建提示 -->
+                <div class="creation-tips">
+                    <h4>💡 創建群組的小提示</h4>
+                    <ul>
+                        <li>選擇一個清楚易懂的群組名稱</li>
+                        <li>在描述中說明群組的用途和規則</li>
+                        <li>私人群組適合小團體或工作群組</li>
+                        <li>公開群組適合興趣社群或大型討論</li>
+                        <li>您可以隨時在設定中修改這些資訊</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 字符計數功能
+        function setupCharacterCount(inputId, maxLength) {
+            const input = document.getElementById(inputId);
+            const small = input.nextElementSibling;
+
+            input.addEventListener('input', function() {
+                const remaining = maxLength - this.value.length;
+                small.textContent = `${this.value.length}/${maxLength} 字符`;
+
+                if (remaining < 10) {
+                    small.style.color = '#e74c3c';
+                } else {
+                    small.style.color = '#666';
+                }
+            });
+        }
+
+        // 設定字符計數
+        setupCharacterCount('name', 50);
+        setupCharacterCount('description', 200);
+
+        // 私人群組切換提示
+        document.querySelector('input[name="isPrivate"]').addEventListener('change', function() {
+            const infoItems = document.querySelectorAll('.info-item');
+            infoItems.forEach(item => item.classList.remove('highlighted'));
+
+            if (this.checked) {
+                infoItems[1].classList.add('highlighted'); // 私人群組
+            } else {
+                infoItems[0].classList.add('highlighted'); // 公開群組
+            }
+        });
+
+        // 初始化高亮公開群組
+        document.querySelectorAll('.info-item')[0].classList.add('highlighted');
+    </script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資料設定 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/profile.css">
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>個人資料設定</h1>
+            <a href="/home" class="back-btn">返回首頁</a>
+        </div>
+
+        <!-- 成功/錯誤訊息 -->
+        <div th:if="${success}" class="success-message" th:text="${success}"></div>
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <div class="profile-content">
+            <!-- 頭像設定區域 -->
+            <div class="profile-section">
+                <h3>頭像設定</h3>
+                <div class="avatar-section">
+                    <div class="current-avatar">
+                        <img th:src="${user.avatarUrl != null ? '/uploads/avatars/' + user.avatarUrl.substring(user.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                            alt="目前頭像" class="avatar-preview" id="avatarPreview">
+                    </div>
+                    <div class="avatar-controls">
+                        <form th:action="@{/profile/upload-avatar}" method="post" enctype="multipart/form-data" class="upload-form">
+                            <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;">
+                            <button type="button" onclick="document.getElementById('avatarInput').click()" class="btn btn-primary">
+                                選擇新頭像
+                            </button>
+                            <button type="submit" class="btn btn-success" id="uploadBtn" style="display: none;">
+                                上傳
+                            </button>
+                        </form>
+                        <form th:action="@{/profile/delete-avatar}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-danger"
+                                th:if="${user.avatarUrl != null}"
+                                onclick="return confirm('確定要刪除頭像嗎？')">
+                                刪除頭像
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基本資料設定 -->
+            <div class="profile-section">
+                <h3>基本資料</h3>
+                <form th:action="@{/profile/update}" method="post" class="profile-form">
+                    <div class="form-group">
+                        <label for="username">用戶名</label>
+                        <input type="text" id="username" th:value="${user.username}" readonly class="readonly-input">
+                        <small>用戶名無法修改</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="displayName">顯示名稱 *</label>
+                        <input type="text" id="displayName" name="displayName"
+                                th:value="${user.displayName}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">電子郵件</label>
+                        <input type="email" id="email" name="email"
+                                th:value="${user.email}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phoneNumber">電話號碼</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber"
+                                th:value="${user.phoneNumber}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bio">個人簡介</label>
+                        <textarea id="bio" name="bio" rows="3"
+                                placeholder="寫一些關於你的介紹..." th:text="${user.bio}"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">更新資料</button>
+                </form>
+            </div>
+
+            <!-- 密碼修改 -->
+            <div class="profile-section">
+                <h3>修改密碼</h3>
+                <form th:action="@{/profile/change-password}" method="post" class="profile-form">
+                    <div class="form-group">
+                        <label for="oldPassword">目前密碼 *</label>
+                        <input type="password" id="oldPassword" name="oldPassword" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword">新密碼 *</label>
+                        <input type="password" id="newPassword" name="newPassword" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">確認新密碼 *</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning">修改密碼</button>
+                </form>
+            </div>
+
+            <!-- 帳戶資訊 -->
+            <div class="profile-section">
+                <h3>帳戶資訊</h3>
+                <div class="account-info">
+                    <p><strong>註冊時間：</strong>
+                        <span th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </p>
+                    <p><strong>最後更新：</strong>
+                        <span th:text="${#temporals.format(user.updatedAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </p>
+                    <p><strong>最後上線：</strong>
+                        <span th:text="${user.lastSeen != null ? #temporals.format(user.lastSeen, 'yyyy-MM-dd HH:mm') : '從未上線'}"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 頭像預覽功能
+        document.getElementById('avatarInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                document.getElementById('avatarPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                document.getElementById('uploadBtn').style.display = 'inline-block';
+            }
+        });
+
+        // 密碼確認驗證
+        document.querySelector('form[action="/profile/change-password"]').addEventListener('submit', function(e) {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                alert('新密碼與確認密碼不一致！');
+            }
+        });
+    </script>
+</body>
+</html>

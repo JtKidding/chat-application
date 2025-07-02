@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首頁 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+    <div class="home-container">
+        <!-- 頂部導航 -->
+        <nav class="top-nav">
+            <div class="nav-brand">
+                <h2>聊天應用程式</h2>
+            </div>
+            <div class="nav-user">
+                <img th:src="${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                     alt="我的頭像" class="nav-avatar">
+                <span th:text="${currentUser.displayName}"></span>
+                <div class="nav-dropdown">
+                    <button class="dropdown-btn">▼</button>
+                    <div class="dropdown-content">
+                        <a href="/profile">個人資料</a>
+                        <a href="/logout">登出</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主要內容 -->
+        <div class="main-content">
+            <!-- 左側邊欄 -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>快速導航</h3>
+                    <ul class="nav-links">
+                        <li><a href="/chat" class="nav-link">
+                            <span class="icon">💬</span>私人聊天
+                        </a></li>
+                        <li><a href="/groups" class="nav-link">
+                            <span class="icon">👥</span>群組管理
+                        </a></li>
+                        <li><a href="/groups/create" class="nav-link">
+                            <span class="icon">➕</span>創建群組
+                        </a></li>
+                    </ul>
+                </div>
+
+                <!-- 最近聊天 -->
+                <div class="sidebar-section">
+                    <h3>最近聊天</h3>
+                    <div class="recent-chats">
+                        <div th:each="partner : ${chatPartners}" class="chat-item">
+                            <a th:href="@{/chat}" class="chat-link">
+                                <img th:src="${partner.avatarUrl != null ? '/uploads/avatars/' + partner.avatarUrl.substring(partner.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                                     alt="頭像" class="chat-avatar">
+                                <div class="chat-info">
+                                    <div class="chat-name" th:text="${partner.displayName}"></div>
+                                    <div class="chat-status" th:text="${partner.online ? '線上' : '離線'}"></div>
+                                </div>
+                            </a>
+                        </div>
+                        <div th:if="${#lists.isEmpty(chatPartners)}" class="empty-state">
+                            <p>還沒有聊天記錄</p>
+                            <a href="/chat" class="btn btn-primary">開始聊天</a>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主要區域 -->
+            <main class="main-area">
+                <!-- 歡迎區域 -->
+                <section class="welcome-section">
+                    <h1>歡迎回來，<span th:text="${currentUser.displayName}"></span>！</h1>
+                    <p>選擇一個選項開始使用聊天功能</p>
+
+                    <div class="action-cards">
+                        <div class="action-card">
+                            <div class="card-icon">💬</div>
+                            <h3>私人聊天</h3>
+                            <p>與其他用戶進行一對一聊天</p>
+                            <a href="/chat" class="btn btn-primary">開始聊天</a>
+                        </div>
+
+                        <div class="action-card">
+                            <div class="card-icon">👥</div>
+                            <h3>群組聊天</h3>
+                            <p>加入或創建群組進行多人聊天</p>
+                            <a href="/groups" class="btn btn-secondary">管理群組</a>
+                        </div>
+
+                        <div class="action-card">
+                            <div class="card-icon">⚙️</div>
+                            <h3>個人設定</h3>
+                            <p>管理您的個人資料和設定</p>
+                            <a href="/profile" class="btn btn-outline">個人資料</a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 我的群組 -->
+                <section class="groups-section">
+                    <div class="section-header">
+                        <h2>我的群組</h2>
+                        <a href="/groups" class="view-all">查看全部</a>
+                    </div>
+
+                    <div class="groups-grid">
+                        <div th:each="group : ${userGroups}" class="group-card">
+                            <div class="group-header">
+                                <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                                     alt="群組頭像" class="group-avatar">
+                                <div class="group-info">
+                                    <h4 th:text="${group.name}"></h4>
+                                    <p class="group-members" th:text="${group.members.size()} + ' 位成員'"></p>
+                                </div>
+                            </div>
+
+                            <p class="group-description" th:text="${group.description ?: '沒有描述'}"></p>
+
+                            <!-- 最後訊息 -->
+                            <div th:if="${latestGroupMessages.containsKey(group.id)}" class="last-message">
+                                <div class="message-preview" th:with="lastMsg=${latestGroupMessages.get(group.id)}">
+                                    <span class="sender" th:text="${lastMsg.sender?.displayName ?: '系統'}"></span>:
+                                    <span class="content" th:text="${lastMsg.content}"></span>
+                                </div>
+                            </div>
+
+                            <div class="group-actions">
+                                <a th:href="@{/group/{id}(id=${group.id})}" class="btn btn-primary btn-sm">進入聊天</a>
+                                <a th:if="${group.creator.username == currentUser.username}"
+                                   th:href="@{/groups/{id}/settings(id=${group.id})}"
+                                   class="btn btn-outline btn-sm">設定</a>
+                            </div>
+                        </div>
+
+                        <div th:if="${#lists.isEmpty(userGroups)}" class="empty-state">
+                            <div class="empty-icon">👥</div>
+                            <h3>還沒有加入任何群組</h3>
+                            <p>創建新群組或加入現有群組開始聊天</p>
+                            <a href="/groups/create" class="btn btn-primary">創建群組</a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 推薦群組 -->
+                <section class="recommended-section" th:if="${!#lists.isEmpty(recommendedGroups)}">
+                    <div class="section-header">
+                        <h2>推薦群組</h2>
+                        <a href="/groups" class="view-all">查看更多</a>
+                    </div>
+
+                    <div class="recommended-grid">
+                        <div th:each="group : ${recommendedGroups}" class="recommended-card">
+                            <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                                 alt="群組頭像" class="recommended-avatar">
+                            <div class="recommended-info">
+                                <h4 th:text="${group.name}"></h4>
+                                <p th:text="${group.description ?: '沒有描述'}"></p>
+                                <div class="recommended-meta">
+                                    <span th:text="${group.members.size()} + ' 位成員'"></span>
+                                </div>
+                            </div>
+                            <form th:action="@{/groups/{id}/join(id=${group.id})}" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-primary btn-sm">加入</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 下拉選單功能
+        document.querySelector('.dropdown-btn').addEventListener('click', function() {
+            document.querySelector('.dropdown-content').classList.toggle('show');
+        });
+
+        // 點擊外部關閉下拉選單
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('.dropdown-btn')) {
+                const dropdowns = document.getElementsByClassName('dropdown-content');
+                for (let i = 0; i < dropdowns.length; i++) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

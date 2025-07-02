@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群組管理 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/groups.css">
+</head>
+<body>
+    <div class="groups-container">
+        <!-- 頂部導航 -->
+        <nav class="top-nav">
+            <div class="nav-left">
+                <a href="/home" class="back-btn">← 返回首頁</a>
+                <h2>群組管理</h2>
+            </div>
+            <div class="nav-right">
+                <a href="/groups/create" class="btn btn-primary">創建群組</a>
+            </div>
+        </nav>
+
+        <!-- 搜尋區域 -->
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜尋群組..." />
+                <button onclick="searchGroups()" class="search-btn">搜尋</button>
+            </div>
+        </div>
+
+        <!-- 標籤頁 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('my-groups')">我的群組</button>
+            <button class="tab-btn" onclick="showTab('created-groups')">我創建的</button>
+            <button class="tab-btn" onclick="showTab('public-groups')">公開群組</button>
+            <button class="tab-btn" onclick="showTab('search-results')" id="search-tab" style="display: none;">搜尋結果</button>
+        </div>
+
+        <!-- 我的群組 -->
+        <div id="my-groups" class="tab-content active">
+            <div class="groups-grid">
+                <div th:each="group : ${userGroups}" class="group-card">
+                    <div class="group-header">
+                        <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                             alt="群組頭像" class="group-avatar">
+                        <div class="group-info">
+                            <h3 th:text="${group.name}"></h3>
+                            <p class="group-members" th:text="${group.members.size()} + ' 位成員'"></p>
+                            <p class="group-type" th:text="${group.private ? '私人群組' : '公開群組'}"></p>
+                        </div>
+                        <div class="group-status">
+                            <span th:if="${group.creator.username == currentUser.username}" class="creator-badge">創建者</span>
+                            <span th:unless="${group.creator.username == currentUser.username}" class="member-badge">成員</span>
+                        </div>
+                    </div>
+
+                    <p class="group-description" th:text="${group.description ?: '沒有描述'}"></p>
+
+                    <div class="group-actions">
+                        <a th:href="@{/group/{id}(id=${group.id})}" class="btn btn-primary">進入聊天</a>
+                        <a th:if="${group.creator.username == currentUser.username}"
+                           th:href="@{/groups/{id}/settings(id=${group.id})}"
+                           class="btn btn-secondary">設定</a>
+                        <form th:if="${group.creator.username != currentUser.username}"
+                              th:action="@{/groups/{id}/leave(id=${group.id})}"
+                              method="post"
+                              style="display: inline;"
+                              onsubmit="return confirm('確定要離開這個群組嗎？')">
+                            <button type="submit" class="btn btn-danger">離開</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(userGroups)}" class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <h3>還沒有加入任何群組</h3>
+                    <p>創建新群組或加入現有群組開始聊天</p>
+                    <a href="/groups/create" class="btn btn-primary">創建群組</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我創建的群組 -->
+        <div id="created-groups" class="tab-content">
+            <div class="groups-grid">
+                <div th:each="group : ${createdGroups}" class="group-card creator-card">
+                    <div class="group-header">
+                        <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                             alt="群組頭像" class="group-avatar">
+                        <div class="group-info">
+                            <h3 th:text="${group.name}"></h3>
+                            <p class="group-members" th:text="${group.members.size()} + ' 位成員'"></p>
+                            <p class="group-created" th:text="'創建於 ' + ${#temporals.format(group.createdAt, 'yyyy-MM-dd')}"></p>
+                        </div>
+                        <div class="creator-badge">創建者</div>
+                    </div>
+
+                    <p class="group-description" th:text="${group.description ?: '沒有描述'}"></p>
+
+                    <div class="group-stats">
+                        <div class="stat-item">
+                            <span class="stat-number" th:text="${group.members.size()}"></span>
+                            <span class="stat-label">成員</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" th:text="${group.private ? '私人' : '公開'}"></span>
+                            <span class="stat-label">類型</span>
+                        </div>
+                    </div>
+
+                    <div class="group-actions">
+                        <a th:href="@{/group/{id}(id=${group.id})}" class="btn btn-primary">進入聊天</a>
+                        <a th:href="@{/groups/{id}/settings(id=${group.id})}" class="btn btn-secondary">管理</a>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(createdGroups)}" class="empty-state">
+                    <div class="empty-icon">➕</div>
+                    <h3>還沒有創建任何群組</h3>
+                    <p>創建您的第一個群組開始管理</p>
+                    <a href="/groups/create" class="btn btn-primary">創建群組</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 公開群組 -->
+        <div id="public-groups" class="tab-content">
+            <div class="groups-grid">
+                <div th:each="group : ${publicGroups}" class="group-card public-card">
+                    <div class="group-header">
+                        <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                             alt="群組頭像" class="group-avatar">
+                        <div class="group-info">
+                            <h3 th:text="${group.name}"></h3>
+                            <p class="group-members" th:text="${group.members.size()} + ' 位成員'"></p>
+                            <p class="group-creator" th:text="'創建者：' + ${group.creator.displayName}"></p>
+                        </div>
+                        <div class="public-badge">公開</div>
+                    </div>
+
+                    <p class="group-description" th:text="${group.description ?: '沒有描述'}"></p>
+
+                    <div class="group-actions">
+                        <form th:action="@{/groups/{id}/join(id=${group.id})}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-primary">加入群組</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(publicGroups)}" class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h3>沒有找到公開群組</h3>
+                    <p>目前沒有可加入的公開群組</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜尋結果 -->
+        <div id="search-results" class="tab-content">
+            <div class="groups-grid" id="searchResultsContainer">
+                <!-- 搜尋結果會在這裡顯示 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 標籤頁切換
+        function showTab(tabName) {
+            // 隱藏所有標籤內容
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // 移除所有標籤按鈕的active類
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+
+            // 顯示選中的標籤內容
+            document.getElementById(tabName).classList.add('active');
+
+            // 激活對應的標籤按鈕
+            event.target.classList.add('active');
+        }
+
+        // 搜尋群組功能
+        function searchGroups() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                alert('請輸入搜尋關鍵字');
+                return;
+            }
+
+            fetch(`/api/groups/search?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(groups => {
+                    displaySearchResults(groups);
+                    showSearchTab();
+                })
+                .catch(error => {
+                    console.error('搜尋失敗:', error);
+                    alert('搜尋失敗，請稍後再試');
+                });
+        }
+
+        // 顯示搜尋結果
+        function displaySearchResults(groups) {
+            const container = document.getElementById('searchResultsContainer');
+
+            if (groups.length === 0) {
+                container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <h3>沒有找到相關群組</h3>
+                            <p>嘗試使用不同的關鍵字搜尋</p>
+                        </div>
+                    `;
+                return;
+            }
+
+            const groupsHTML = groups.map(group => `
+                    <div class="group-card public-card">
+                        <div class="group-header">
+                            <img src="${group.avatarUrl}" alt="群組頭像" class="group-avatar">
+                            <div class="group-info">
+                                <h3>${group.name}</h3>
+                                <p class="group-members">${group.memberCount} 位成員</p>
+                            </div>
+                            <div class="public-badge">公開</div>
+                        </div>
+                        <p class="group-description">${group.description || '沒有描述'}</p>
+                        <div class="group-actions">
+                            ${group.isMember ?
+                `<a href="/group/${group.id}" class="btn btn-primary">進入聊天</a>` :
+                `<form action="/groups/${group.id}/join" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-primary">加入群組</button>
+                                </form>`
+            }
+                        </div>
+                    </div>
+                `).join('');
+
+            container.innerHTML = `<div class="groups-grid">${groupsHTML}</div>`;
+        }
+
+        // 顯示搜尋標籤
+        function showSearchTab() {
+            document.getElementById('search-tab').style.display = 'inline-block';
+            showTab('search-results');
+
+            // 更新標籤按鈕狀態
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('search-tab').classList.add('active');
+        }
+
+        // Enter鍵搜尋
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchGroups();
+            }
+        });
+    </script>
+</body>
+</html>

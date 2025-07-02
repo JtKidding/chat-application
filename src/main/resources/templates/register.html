@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>註冊</h2>
+
+            <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+            <form th:action="@{/register}" method="post">
+                <div class="form-group">
+                    <input type="text" name="username" placeholder="用戶名" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" name="password" placeholder="密碼" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" name="displayName" placeholder="顯示名稱" required>
+                </div>
+                <button type="submit" class="btn-primary">註冊</button>
+            </form>
+
+            <p>已有帳號？ <a href="/login">立即登入</a></p>
+        </div>
+    </div>
+</body>
+</html>
