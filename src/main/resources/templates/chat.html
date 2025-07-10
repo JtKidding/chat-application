@@ -71,8 +71,12 @@
             <div class="users-list">
                 <div th:each="member : ${group.members}" class="user-item">
                     <div class="user-avatar">
-                        <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
-                             alt="成員頭像" class="avatar-img">
+                        <img th:src="${member.avatarUrl != null and !member.avatarUrl.isEmpty() ?
+                            (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
+                             '/images/default-avatar.png'}"
+                             alt="成員頭像"
+                             class="avatar-img"
+                             onerror="this.src='/images/default-avatar.png'">
                         <div class="online-indicator" th:classappend="${member.online ? 'online' : 'offline'}"></div>
                     </div>
                     <div class="user-info">

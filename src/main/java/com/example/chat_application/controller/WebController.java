@@ -229,7 +229,7 @@ public class WebController {
 
             Group group = groupService.createGroup(name, description, currentUser, isPrivate);
             redirectAttributes.addFlashAttribute("success", "群組創建成功！");
-            return "redirect:/groups/" + group.getId();
+            return "redirect:/group/" + group.getId();
 
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());

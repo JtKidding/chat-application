@@ -32,6 +32,13 @@ body {
     color: white;
 }
 
+/* 防止圖片變形 */
+.avatar-img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+}
+
 .current-user-info {
     display: flex;
     align-items: center;
@@ -140,11 +147,12 @@ body {
 }
 
 .user-avatar .avatar-img {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #e1e8ed;
+    width: 45px ;
+    height: 45px ;
+    border-radius: 50% ;
+    object-fit: cover ;
+    border: 2px solid #e1e8ed !important;
+    background-color: #f8f9fa; /* 載入失敗時的背景色 */
 }
 
 .online-indicator {
