@@ -154,7 +154,8 @@ public class WebController {
             return "redirect:/login";
         }
 
-        Optional<Group> groupOpt = groupService.findById(groupId);
+        // 使用帶有成員初始化的查詢方法
+        Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
         if (groupOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "群組不存在");
             return "redirect:/home";
@@ -162,13 +163,32 @@ public class WebController {
 
         Group group = groupOpt.get();
 
-        // 檢查用戶是否為群組成員
+        // 檢查用戶是否為群組成員（現在 members 已經被初始化）
         if (!group.isMember(currentUser)) {
             redirectAttributes.addFlashAttribute("error", "您不是該群組的成員");
             return "redirect:/home";
         }
 
         userService.setUserOnline(username, true);
+
+        // 修復頭像URL（現在可以安全地遍歷 members）
+        group.getMembers().forEach(member -> {
+            String avatarUrl = member.getAvatarUrl();
+            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+                member.setAvatarUrl("/images/default-avatar.png");
+            } else if (!avatarUrl.startsWith("/uploads/") && !avatarUrl.startsWith("/images/")) {
+                member.setAvatarUrl("/uploads/avatars/" + avatarUrl);
+            }
+        });
+
+        // 設置群組頭像
+        String groupAvatarUrl = group.getAvatarUrl();
+        if (groupAvatarUrl == null || groupAvatarUrl.trim().isEmpty()) {
+            group.setAvatarUrl("/images/default-group.png");
+        } else if (!groupAvatarUrl.startsWith("/uploads/") && !groupAvatarUrl.startsWith("/images/")) {
+            group.setAvatarUrl("/uploads/groups/" + groupAvatarUrl);
+        }
+
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("group", group);
         model.addAttribute("chatType", "group");

@@ -39,6 +39,33 @@ body {
     max-height: 100%;
 }
 
+/* 群組成員頭像 - 左側面板 */
+.users-panel .user-avatar .avatar-img {
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 2px solid #e1e8ed !important;
+    background-color: #f8f9fa !important;
+    display: block !important;
+    max-width: 45px !important;
+    max-height: 45px !important;
+}
+
+/* 群組頭像 - 左側頂部 */
+.users-panel .group-info img,
+.users-panel .group-avatar {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 3px solid white !important;
+    background-color: #f8f9fa !important;
+    display: block !important;
+    max-width: 50px !important;
+    max-height: 50px !important;
+}
+
 .current-user-info {
     display: flex;
     align-items: center;
@@ -147,12 +174,13 @@ body {
 }
 
 .user-avatar .avatar-img {
-    width: 45px ;
-    height: 45px ;
-    border-radius: 50% ;
-    object-fit: cover ;
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
     border: 2px solid #e1e8ed !important;
-    background-color: #f8f9fa; /* 載入失敗時的背景色 */
+    background-color: #f8f9fa !important; /* 載入失敗時的背景色 */
+    display: block !important;
 }
 
 .online-indicator {
@@ -171,6 +199,15 @@ body {
 
 .online-indicator.offline {
     background: #95a5a6;
+}
+
+/* 狀態樣式 */
+.online-status {
+    color: #28a745;
+}
+
+.offline-status {
+    color: #6c757d;
 }
 
 .user-info {
@@ -215,6 +252,21 @@ body {
     border-bottom: 1px solid #e1e8ed;
     background: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 聊天標題區域的群組頭像 - 右上角 */
+.chat-header .chat-header-avatar,
+.chat-header img {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 2px solid #667eea !important;
+    background-color: #f8f9fa !important;
+    display: inline-block !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    margin-right: 15px !important;
 }
 
 .chat-header h3 {

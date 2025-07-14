@@ -1,6 +1,8 @@
 package com.example.chat_application.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.LazyInitializationException;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.HashSet;
@@ -74,7 +76,23 @@ public class Group {
     }
 
     public boolean isMember(User user) {
-        return this.members.contains(user);
+        try {
+            return this.members.contains(user);
+        } catch (LazyInitializationException e) {
+            // 記錄警告並返回 false
+            System.err.println("LazyInitializationException in isMember: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Transient
+    public boolean isMemberSafe(User user) {
+        try {
+            return this.members.contains(user);
+        } catch (LazyInitializationException e) {
+            // 如果懶加載失敗，返回 false 或通過其他方式檢查
+            return false;
+        }
     }
 
     public boolean isCreator(User user) {

@@ -168,12 +168,38 @@ body {
 }
 
 .group-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #667eea;
-    flex-shrink: 0;
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 3px solid #667eea !important;
+    background-color: #f8f9fa !important;
+    display: block !important;
+}
+
+/* 群組聊天標題容器 */
+.group-chat-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+}
+
+.chat-header-info h3 {
+    margin: 0 !important;
+    color: #333 !important;
+}
+
+.chat-header-info p {
+    margin: 0 !important;
+    color: #666 !important;
+    font-size: 0.9rem !important;
+}
+
+/* 防止圖片變形和顯示異常 */
+.avatar-img, .group-avatar {
+    max-width: 100%;
+    max-height: 100%;
+    vertical-align: middle;
 }
 
 .group-info {
@@ -227,6 +253,11 @@ body {
 .creator-badge {
     background: #ffd700;
     color: #8b6914;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .member-badge {

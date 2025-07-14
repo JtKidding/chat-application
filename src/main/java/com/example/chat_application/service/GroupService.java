@@ -7,6 +7,7 @@ import com.example.chat_application.repository.GroupRepository;
 import com.example.chat_application.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -272,8 +273,9 @@ public class GroupService {
     }
 
     // 查詢方法
+    @Transactional(readOnly = true)
     public Optional<Group> findById(Long id) {
-        return groupRepository.findById(id);
+        return findByIdWithMembers(id);
     }
 
     public List<Group> findByUser(User user) {
@@ -320,5 +322,37 @@ public class GroupService {
         public int getMemberCount() { return memberCount; }
         public long getMessageCount() { return messageCount; }
         public java.time.LocalDateTime getCreatedAt() { return createdAt; }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Group> findByIdWithMembers(Long id) {
+        Optional<Group> groupOpt = groupRepository.findById(id);
+        if (groupOpt.isPresent()) {
+            Group group = groupOpt.get();
+            // 強制初始化 members 集合
+            group.getMembers().size();
+            return Optional.of(group);
+        }
+        return Optional.empty();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> findByUserWithMembers(User user) {
+        List<Group> groups = groupRepository.findByMembersContaining(user);
+        // 強制初始化每個群組的 members 集合
+        groups.forEach(group -> group.getMembers().size());
+        return groups;
+    }
+
+    // 添加檢查用戶是否為群組成員的方法
+    @Transactional(readOnly = true)
+    public boolean isUserMemberOfGroup(Long groupId, User user) {
+        Optional<Group> groupOpt = groupRepository.findById(groupId);
+        if (groupOpt.isPresent()) {
+            Group group = groupOpt.get();
+            // 在事務內檢查成員資格
+            return group.getMembers().contains(user);
+        }
+        return false;
     }
 }

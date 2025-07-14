@@ -53,8 +53,13 @@
         <div class="users-panel" th:if="${chatType == 'group'}">
             <div class="user-header">
                 <div class="group-info">
-                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
-                         alt="群組頭像" class="group-avatar">
+                    <!-- 修復群組頭像顯示 -->
+                    <img th:src="${group.avatarUrl != null and !#strings.isEmpty(group.avatarUrl) ?
+                         (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
+                         '/images/default-group.png'}"
+                         alt="群組頭像"
+                         class="group-avatar"
+                         onerror="this.src='/images/default-group.png'; console.log('群組頭像載入失敗，使用預設圖片');">
                     <div class="group-details">
                         <h3 th:text="${group.name}"></h3>
                         <p th:text="${group.members.size()} + ' 位成員'"></p>
@@ -69,14 +74,17 @@
                 </div>
             </div>
             <div class="users-list">
+                <!-- 修復群組成員頭像顯示 -->
                 <div th:each="member : ${group.members}" class="user-item">
                     <div class="user-avatar">
-                        <img th:src="${member.avatarUrl != null and !member.avatarUrl.isEmpty() ?
-                            (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
+                        <!-- 改進的頭像URL處理邏輯 -->
+                        <img th:src="${member.avatarUrl != null and !#strings.isEmpty(member.avatarUrl) ?
+                             (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
                              '/images/default-avatar.png'}"
                              alt="成員頭像"
                              class="avatar-img"
-                             onerror="this.src='/images/default-avatar.png'">
+                             onerror="this.src='/images/default-avatar.png'; console.log('成員頭像載入失敗: ' + this.getAttribute('alt'));"
+                             onload="console.log('成員頭像載入成功: ' + this.src);">
                         <div class="online-indicator" th:classappend="${member.online ? 'online' : 'offline'}"></div>
                     </div>
                     <div class="user-info">
@@ -84,7 +92,8 @@
                         <div class="user-status">
                             <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
                             <span th:unless="${group.creator.equals(member)}"
-                                  th:text="${member.online ? '線上' : '離線'}"></span>
+                                  th:text="${member.online ? '線上' : '離線'}"
+                                  th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
                         </div>
                     </div>
                 </div>

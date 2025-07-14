@@ -11,6 +11,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
@@ -109,45 +111,54 @@ public class ChatController {
         try {
             Long groupId = Long.parseLong(groupIdStr);
             User sender = userService.findByUsername(senderUsername).orElse(null);
-            Optional<Group> groupOpt = groupService.findById(groupId);
 
-            if (sender != null && groupOpt.isPresent()) {
-                Group group = groupOpt.get();
+            if (sender != null) {
+                // 使用安全的成員檢查方法
+                boolean isMember = groupService.isUserMemberOfGroup(groupId, sender);
 
-                // 檢查用戶是否為群組成員
-                if (!group.isMember(sender)) {
+                if (!isMember) {
                     return; // 非群組成員，拒絕發送
                 }
 
-                // 儲存群組訊息到資料庫
-                Message message = messageService.saveGroupMessage(sender, group, content);
+                // 獲取群組信息（帶有已初始化的成員）
+                Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
 
-                // 準備訊息資料
-                Map<String, Object> messageData = Map.of(
-                        "id", message.getId(),
-                        "senderUsername", sender.getUsername(),
-                        "senderDisplayName", sender.getDisplayName(),
-                        "senderAvatarUrl", sender.getAvatarUrl() != null ?
-                                "/uploads/avatars/" + sender.getAvatarUrl().substring(sender.getAvatarUrl().lastIndexOf("/") + 1) :
-                                "/images/default-avatar.png",
-                        "content", message.getContent(),
-                        "timestamp", message.getTimestamp().toString(),
-                        "groupId", group.getId(),
-                        "groupName", group.getName(),
-                        "messageType", "group"
-                );
+                if (groupOpt.isPresent()) {
+                    Group group = groupOpt.get();
 
-                // 發送訊息給群組中的所有成員
-                group.getMembers().forEach(member -> {
-                    messagingTemplate.convertAndSendToUser(
-                            member.getUsername(),
-                            "/queue/group-messages",
-                            messageData
+                    // 儲存群組訊息到資料庫
+                    Message message = messageService.saveGroupMessage(sender, group, content);
+
+                    // 準備訊息資料
+                    Map<String, Object> messageData = Map.of(
+                            "id", message.getId(),
+                            "senderUsername", sender.getUsername(),
+                            "senderDisplayName", sender.getDisplayName(),
+                            "senderAvatarUrl", sender.getAvatarUrl() != null ?
+                                    "/uploads/avatars/" + sender.getAvatarUrl().substring(sender.getAvatarUrl().lastIndexOf("/") + 1) :
+                                    "/images/default-avatar.png",
+                            "content", message.getContent(),
+                            "timestamp", message.getTimestamp().toString(),
+                            "groupId", group.getId(),
+                            "groupName", group.getName(),
+                            "messageType", "group"
                     );
-                });
+
+                    // 發送訊息給群組中的所有成員
+                    group.getMembers().forEach(member -> {
+                        messagingTemplate.convertAndSendToUser(
+                                member.getUsername(),
+                                "/queue/group-messages",
+                                messageData
+                        );
+                    });
+                }
             }
         } catch (NumberFormatException e) {
             System.err.println("無效的群組ID: " + groupIdStr);
+        } catch (Exception e) {
+            System.err.println("發送群組訊息時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -187,6 +198,7 @@ public class ChatController {
 
     // 處理加入群組
     @MessageMapping("/chat.joinGroup")
+    @Transactional
     public void joinGroup(@Payload Map<String, String> payload, Principal principal) {
         String username = principal.getName();
         String groupIdStr = payload.get("groupId");
@@ -194,32 +206,45 @@ public class ChatController {
         try {
             Long groupId = Long.parseLong(groupIdStr);
             User user = userService.findByUsername(username).orElse(null);
-            Optional<Group> groupOpt = groupService.findById(groupId);
+//            Optional<Group> groupOpt = groupService.findById(groupId);
 
-            if (user != null && groupOpt.isPresent()) {
-                Group group = groupOpt.get();
+            if (user != null) {
+                // 使用 GroupService 的安全方法檢查成員資格
+                boolean isMember = groupService.isUserMemberOfGroup(groupId, user);
 
-                // 檢查用戶是否為群組成員
-                if (group.isMember(user)) {
-                    // 通知群組成員用戶已上線
-                    Map<String, Object> joinData = Map.of(
-                            "type", "USER_ONLINE",
-                            "username", username,
-                            "displayName", user.getDisplayName(),
-                            "groupId", groupId
-                    );
+                if (isMember) {
+                    // 獲取群組信息（帶有已初始化的成員）
+                    Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
 
-                    group.getMembers().forEach(member -> {
-                        messagingTemplate.convertAndSendToUser(
-                                member.getUsername(),
-                                "/queue/group-updates",
-                                joinData
-                        );
-                    });
+                    if (groupOpt.isPresent()) {
+                        Group group = groupOpt.get();
+
+                        // 檢查用戶是否為群組成員
+                        if (group.isMember(user)) {
+                            // 通知群組成員用戶已上線
+                            Map<String, Object> joinData = Map.of(
+                                    "type", "USER_ONLINE",
+                                    "username", username,
+                                    "displayName", user.getDisplayName(),
+                                    "groupId", groupId
+                            );
+
+                            group.getMembers().forEach(member -> {
+                                messagingTemplate.convertAndSendToUser(
+                                        member.getUsername(),
+                                        "/queue/group-updates",
+                                        joinData
+                                );
+                            });
+                        }
+                    }
                 }
             }
         } catch (NumberFormatException e) {
             System.err.println("無效的群組ID: " + groupIdStr);
+        } catch (Exception e) {
+            System.err.println("加入群組時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
