@@ -7,140 +7,187 @@
     <link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
-    <div class="chat-container">
-        <!-- 左側面板 -->
-        <div class="users-panel" th:if="${chatType == 'private'}">
-            <!-- 原有的私人聊天用戶列表 -->
-            <div class="user-header">
-                <div class="current-user-info">
-                    <div class="current-user-avatar">
-                        <img th:src="${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
-                             alt="我的頭像" class="avatar-img">
-                    </div>
-                    <div class="current-user-details">
-                        <span class="current-user-name" th:text="${currentUser.displayName}"></span>
-                        <div class="user-actions">
-                            <a href="/home" class="profile-btn">首頁</a>
-                            <a href="/profile" class="profile-btn">編輯資料</a>
-                            <a href="/logout" class="logout-btn">登出</a>
-                        </div>
-                    </div>
+<div class="chat-container">
+    <!-- 左側面板 -->
+    <div class="users-panel" th:if="${chatType == 'private'}">
+        <!-- 原有的私人聊天用戶列表 -->
+        <div class="user-header">
+            <div class="current-user-info">
+                <div class="current-user-avatar">
+                    <img th:src="${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                         alt="我的頭像" class="avatar-img">
                 </div>
-                <h3>線上用戶</h3>
-            </div>
-            <div class="users-list" id="usersList">
-                <div th:each="user : ${users}"
-                     th:if="${user.username != currentUser.username}"
-                     class="user-item"
-                     th:data-username="${user.username}"
-                     th:onclick="'selectUser(this)'">
-                    <div class="user-avatar">
-                        <img th:src="${user.avatarUrl != null ? '/uploads/avatars/' + user.avatarUrl.substring(user.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
-                             alt="用戶頭像" class="avatar-img">
-                        <div class="online-indicator" th:classappend="${user.online ? 'online' : 'offline'}"></div>
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name" th:text="${user.displayName}"></div>
-                        <div class="user-status" th:text="${user.online ? '線上' : '離線'}"></div>
-                        <div class="user-bio" th:if="${user.bio != null and !user.bio.isEmpty()}"
-                             th:text="${user.bio.length() > 30 ? user.bio.substring(0, 30) + '...' : user.bio}"></div>
+                <div class="current-user-details">
+                    <span class="current-user-name" th:text="${currentUser.displayName}"></span>
+                    <div class="user-actions">
+                        <a href="/home" class="profile-btn">首頁</a>
+                        <a href="/profile" class="profile-btn">編輯資料</a>
+                        <a href="/logout" class="logout-btn">登出</a>
                     </div>
                 </div>
             </div>
+            <h3>線上用戶</h3>
         </div>
-
-        <!-- 群組成員面板 -->
-        <div class="users-panel" th:if="${chatType == 'group'}">
-            <div class="user-header">
-                <div class="group-info">
-                    <!-- 修復群組頭像顯示 -->
-                    <img th:src="${group.avatarUrl != null and !#strings.isEmpty(group.avatarUrl) ?
-                         (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
-                         '/images/default-group.png'}"
-                         alt="群組頭像"
-                         class="group-avatar"
-                         onerror="this.src='/images/default-group.png'; console.log('群組頭像載入失敗，使用預設圖片');">
-                    <div class="group-details">
-                        <h3 th:text="${group.name}"></h3>
-                        <p th:text="${group.members.size()} + ' 位成員'"></p>
-                        <div class="group-actions">
-                            <a href="/home" class="profile-btn">首頁</a>
-                            <a th:if="${group.creator.username == currentUser.username}"
-                               th:href="@{/groups/{id}/settings(id=${group.id})}"
-                               class="profile-btn">設定</a>
-                            <a href="/logout" class="logout-btn">登出</a>
-                        </div>
-                    </div>
+        <div class="users-list" id="usersList">
+            <div th:each="user : ${users}"
+                 th:if="${user.username != currentUser.username}"
+                 class="user-item"
+                 th:data-username="${user.username}"
+                 th:onclick="'selectUser(this)'">
+                <div class="user-avatar">
+                    <img th:src="${user.avatarUrl != null ? '/uploads/avatars/' + user.avatarUrl.substring(user.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                         alt="用戶頭像" class="avatar-img">
+                    <div class="online-indicator" th:classappend="${user.online ? 'online' : 'offline'}"></div>
                 </div>
-            </div>
-            <div class="users-list">
-                <!-- 修復群組成員頭像顯示 -->
-                <div th:each="member : ${group.members}" class="user-item">
-                    <div class="user-avatar">
-                        <!-- 改進的頭像URL處理邏輯 -->
-                        <img th:src="${member.avatarUrl != null and !#strings.isEmpty(member.avatarUrl) ?
-                             (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
-                             '/images/default-avatar.png'}"
-                             alt="成員頭像"
-                             class="avatar-img"
-                             onerror="this.src='/images/default-avatar.png'; console.log('成員頭像載入失敗: ' + this.getAttribute('alt'));"
-                             onload="console.log('成員頭像載入成功: ' + this.src);">
-                        <div class="online-indicator" th:classappend="${member.online ? 'online' : 'offline'}"></div>
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name" th:text="${member.displayName}"></div>
-                        <div class="user-status">
-                            <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
-                            <span th:unless="${group.creator.equals(member)}"
-                                  th:text="${member.online ? '線上' : '離線'}"
-                                  th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 右側聊天區域 -->
-        <div class="chat-panel">
-            <div class="chat-header" id="chatHeader">
-                <div th:if="${chatType == 'private'}">
-                    <h3>選擇一個用戶開始聊天</h3>
-                </div>
-                <div th:if="${chatType == 'group'}" class="group-chat-header">
-                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
-                         alt="群組頭像" class="chat-header-avatar">
-                    <div class="chat-header-info">
-                        <h3 th:text="${group.name}"></h3>
-                        <p th:text="${group.members.size()} + ' 位成員'"></p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="messages-container" id="messagesContainer">
-                <!-- 訊息會在這裡顯示 -->
-            </div>
-
-            <div class="message-input-container"
-                 th:style="${chatType == 'group' ? 'display: block;' : 'display: none;'}"
-                 id="messageInputContainer">
-                <div class="message-input">
-                    <input type="text" id="messageInput" placeholder="輸入訊息..." />
-                    <button id="sendButton">發送</button>
+                <div class="user-info">
+                    <div class="user-name" th:text="${user.displayName}"></div>
+                    <div class="user-status" th:text="${user.online ? '線上' : '離線'}"></div>
+                    <div class="user-bio" th:if="${user.bio != null and !user.bio.isEmpty()}"
+                         th:text="${user.bio.length() > 30 ? user.bio.substring(0, 30) + '...' : user.bio}"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <script th:inline="javascript">
-        var currentUser = /*[[${currentUser.username}]]*/ '';
-        var currentUserDisplayName = /*[[${currentUser.displayName}]]*/ '';
-        var currentUserAvatar = /*[[${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}]]*/ '';
-        var chatType = /*[[${chatType}]]*/ 'private';
-        var groupId = /*[[${group?.id}]]*/ null;
-        var groupName = /*[[${group?.name}]]*/ null;
-    </script>
-    <script src="/js/chat.js"></script>
+    <!-- 群組成員面板 -->
+    <div class="users-panel" th:if="${chatType == 'group'}">
+        <div class="user-header">
+            <div class="group-info">
+                <!-- 修復群組頭像顯示，調整尺寸 -->
+                <img th:src="${group.avatarUrl != null and !#strings.isEmpty(group.avatarUrl) ?
+                         (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
+                         '/images/default-group.png'}"
+                     alt="群組頭像"
+                     class="group-avatar"
+                     style="width: 60px !important; height: 60px !important; border-radius: 50% !important; object-fit: cover !important; border: 3px solid white !important;"
+                     onerror="this.src='/images/default-group.png'; console.log('群組頭像載入失敗，使用預設圖片');">
+                <div class="group-details">
+                    <h3 th:text="${group.name}"></h3>
+                    <p th:text="${group.members.size()} + ' 位成員'"></p>
+                    <div class="group-actions">
+                        <a href="/home" class="profile-btn">首頁</a>
+                        <a th:if="${group.creator.username == currentUser.username}"
+                           th:href="@{/groups/{id}/settings(id=${group.id})}"
+                           class="profile-btn">設定</a>
+                        <a href="/logout" class="logout-btn">登出</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="users-list">
+            <!-- 修復群組成員頭像顯示 -->
+            <div th:each="member : ${group.members}" class="user-item">
+                <div class="user-avatar">
+                    <!-- 改進的頭像URL處理邏輯 -->
+                    <img th:src="${member.avatarUrl != null and !#strings.isEmpty(member.avatarUrl) ?
+                             (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
+                             '/images/default-avatar.png'}"
+                         alt="成員頭像"
+                         class="avatar-img"
+                         onerror="this.src='/images/default-avatar.png'; console.log('成員頭像載入失敗: ' + this.getAttribute('alt'));"
+                         onload="console.log('成員頭像載入成功: ' + this.src);">
+                    <div class="online-indicator" th:classappend="${member.online ? 'online' : 'offline'}"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" th:text="${member.displayName}"></div>
+                    <div class="user-status">
+                        <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
+                        <span th:unless="${group.creator.equals(member)}"
+                              th:text="${member.online ? '線上' : '離線'}"
+                              th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側聊天區域 -->
+    <div class="chat-panel">
+        <div class="chat-header" id="chatHeader">
+            <div th:if="${chatType == 'private'}">
+                <h3>選擇一個用戶開始聊天</h3>
+            </div>
+            <div th:if="${chatType == 'group'}" class="group-chat-header">
+                <!-- 修復右側聊天標題的群組頭像顯示 -->
+                <img th:src="${group.avatarUrl != null and !#strings.isEmpty(group.avatarUrl) ?
+                         (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
+                         '/images/default-group.png'}"
+                     alt="群組頭像"
+                     class="chat-header-avatar"
+                     style="width: 40px !important; height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 2px solid #667eea !important; margin-right: 15px !important;"
+                     onerror="this.src='/images/default-group.png'; console.log('聊天標題群組頭像載入失敗');">
+                <div class="chat-header-info">
+                    <h3 th:text="${group.name}"></h3>
+                    <p th:text="${group.members.size()} + ' 位成員'"></p>
+                </div>
+                <div class="group-actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
+                    <!-- 只有群組成員可以看到邀請按鈕 -->
+                    <button onclick="openInviteModal()" class="btn btn-outline btn-sm" title="邀請成員">
+                        👥 邀請
+                    </button>
+                    <!-- 創建者才能看到設定按鈕 -->
+                    <a th:if="${group.creator.username == currentUser.username}"
+                       th:href="@{/groups/{id}/settings(id=${group.id})}"
+                       class="btn btn-secondary btn-sm" title="群組設定">
+                        ⚙️ 設定
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 邀請彈窗 -->
+        <div id="inviteModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>邀請成員加入群組</h4>
+                    <span class="close" onclick="closeInviteModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="search-container">
+                        <input type="text" id="modalUserSearch" class="user-search"
+                               placeholder="搜尋用戶名或顯示名稱..." autocomplete="off">
+                        <div class="search-results" id="modalSearchResults"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalInviteMessage">邀請訊息（可選）</label>
+                        <textarea id="modalInviteMessage" class="invite-message"
+                                  placeholder="歡迎加入我們的群組！"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeInviteModal()" class="btn btn-secondary">取消</button>
+                    <button onclick="sendModalInvitation()" class="btn btn-primary" id="modalInviteBtn" disabled>
+                        發送邀請
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="messages-container" id="messagesContainer">
+            <!-- 訊息會在這裡顯示 -->
+        </div>
+
+        <div class="message-input-container"
+             th:style="${chatType == 'group' ? 'display: block;' : 'display: none;'}"
+             id="messageInputContainer">
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="輸入訊息..." />
+                <button id="sendButton">發送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script th:inline="javascript">
+    var currentUser = /*[[${currentUser.username}]]*/ '';
+    var currentUserDisplayName = /*[[${currentUser.displayName}]]*/ '';
+    var currentUserAvatar = /*[[${currentUser.avatarUrl != null ? '/uploads/avatars/' + currentUser.avatarUrl.substring(currentUser.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}]]*/ '';
+    var chatType = /*[[${chatType}]]*/ 'private';
+    var groupId = /*[[${group?.id}]]*/ null;
+    var groupName = /*[[${group?.name}]]*/ null;
+</script>
+<script src="/js/chat.js"></script>
 </body>
 </html>

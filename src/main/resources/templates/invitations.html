@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群組邀請 - 聊天應用程式</title>
+    <link rel="stylesheet" href="/css/home.css">
+    <style>
+        .invitations-container {
+            min-height: 100vh;
+            background: #f5f7fa;
+        }
+
+        .invitations-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section-tabs {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            padding: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .invitation-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e1e8ed;
+            transition: all 0.3s;
+        }
+
+        .invitation-card:hover {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .invitation-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .invitation-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .invitation-info {
+            flex: 1;
+        }
+
+        .invitation-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .invitation-subtitle {
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .invitation-time {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .invitation-message {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e1e8ed;
+            margin-bottom: 1rem;
+            font-style: italic;
+            color: #555;
+        }
+
+        .invitation-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .invitation-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-accepted {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-declined {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-expired {
+            background: #e2e3e5;
+            color: #495057;
+        }
+
+        .status-cancelled {
+            background: #e2e3e5;
+            color: #495057;
+        }
+
+        .group-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #666;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+<div class="invitations-container">
+    <!-- 頂部導航 -->
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <h2>群組邀請</h2>
+        </div>
+        <div class="nav-user">
+            <a href="/home" class="btn btn-outline">返回首頁</a>
+        </div>
+    </nav>
+
+    <div class="invitations-content">
+        <!-- 標籤頁導航 -->
+        <div class="section-tabs">
+            <button class="tab-btn active" onclick="showTab('received')">收到的邀請</button>
+            <button class="tab-btn" onclick="showTab('sent')">發出的邀請</button>
+        </div>
+
+        <!-- 收到的邀請 -->
+        <div id="received" class="tab-content active">
+            <h3>收到的邀請</h3>
+            <div id="receivedInvitations">
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+
+        <!-- 發出的邀請 -->
+        <div id="sent" class="tab-content">
+            <h3>發出的邀請</h3>
+            <div id="sentInvitations">
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 當頁面載入完成時
+    document.addEventListener('DOMContentLoaded', function() {
+        loadReceivedInvitations();
+        loadSentInvitations();
+    });
+
+    // 切換標籤
+    function showTab(tabName) {
+        // 隱藏所有標籤內容
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        // 移除所有標籤按鈕的active類
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // 顯示選中的標籤內容
+        document.getElementById(tabName).classList.add('active');
+
+        // 激活對應的標籤按鈕
+        event.target.classList.add('active');
+    }
+
+    // 載入收到的邀請
+    function loadReceivedInvitations() {
+        fetch('/api/invitations/received')
+            .then(response => response.json())
+            .then(invitations => {
+                displayInvitations(invitations, 'receivedInvitations', 'received');
+            })
+            .catch(error => {
+                console.error('載入收到的邀請失敗:', error);
+                document.getElementById('receivedInvitations').innerHTML =
+                    '<div class="error-message">載入邀請失敗，請重新整理頁面</div>';
+            });
+    }
+
+    // 載入發出的邀請
+    function loadSentInvitations() {
+        fetch('/api/invitations/sent')
+            .then(response => response.json())
+            .then(invitations => {
+                displayInvitations(invitations, 'sentInvitations', 'sent');
+            })
+            .catch(error => {
+                console.error('載入發出的邀請失敗:', error);
+                document.getElementById('sentInvitations').innerHTML =
+                    '<div class="error-message">載入邀請失敗，請重新整理頁面</div>';
+            });
+    }
+
+    // 顯示邀請列表
+    function displayInvitations(invitations, containerId, type) {
+        const container = document.getElementById(containerId);
+
+        if (invitations.length === 0) {
+            container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📨</div>
+                        <h3>沒有邀請</h3>
+                        <p>${type === 'received' ? '您還沒有收到任何群組邀請' : '您還沒有發出任何群組邀請'}</p>
+                    </div>
+                `;
+            return;
+        }
+
+        container.innerHTML = invitations.map(invitation => {
+            const isReceived = type === 'received';
+            const otherUser = isReceived ? invitation.inviter : invitation.invitee;
+            const actionText = isReceived ? '邀請您加入' : '您邀請了';
+
+            return `
+                    <div class="invitation-card">
+                        <div class="invitation-header">
+                            <img src="${otherUser.avatarUrl}" alt="頭像" class="invitation-avatar">
+                            <div class="invitation-info">
+                                <div class="invitation-title">
+                                    ${otherUser.displayName} ${actionText} ${invitation.group.name}
+                                </div>
+                                <div class="invitation-subtitle">
+                                    <span class="group-badge">
+                                        👥 ${invitation.group.memberCount} 位成員
+                                    </span>
+                                </div>
+                                <div class="invitation-time">
+                                    ${formatTime(invitation.createdAt)}
+                                    ${invitation.isExpired ? ' • 已過期' : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        ${invitation.message ? `
+                            <div class="invitation-message">
+                                "${invitation.message}"
+                            </div>
+                        ` : ''}
+
+                        <div class="invitation-actions">
+                            ${generateActionButtons(invitation, isReceived)}
+                        </div>
+                    </div>
+                `;
+        }).join('');
+    }
+
+    // 生成操作按鈕
+    function generateActionButtons(invitation, isReceived) {
+        if (invitation.status === 'PENDING' && !invitation.isExpired) {
+            if (isReceived) {
+                return `
+                        <button onclick="acceptInvitation(${invitation.id})" class="btn btn-primary">接受</button>
+                        <button onclick="declineInvitation(${invitation.id})" class="btn btn-secondary">拒絕</button>
+                        <a href="/group/${invitation.group.id}/preview?invitationId=${invitation.id}" class="btn btn-outline">查看群組</a>
+                    `;
+            } else {
+                return `
+                        <button onclick="cancelInvitation(${invitation.id})" class="btn btn-danger">取消邀請</button>
+                        <a href="/group/${invitation.group.id}/preview" class="btn btn-outline">查看群組</a>
+                    `;
+            }
+        } else {
+            let statusText = getStatusText(invitation.status);
+            let statusClass = `status-${invitation.status.toLowerCase()}`;
+
+            if (invitation.isExpired) {
+                statusText = '已過期';
+                statusClass = 'status-expired';
+            }
+
+            return `
+                    <span class="invitation-status ${statusClass}">${statusText}</span>
+                    ${invitation.status === 'ACCEPTED' ?
+                `<a href="/group/${invitation.group.id}" class="btn btn-primary">進入群組</a>` :
+                ''}
+                `;
+        }
+    }
+
+    // 接受邀請
+    function acceptInvitation(invitationId) {
+        if (!confirm('確定要接受這個群組邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/accept`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    loadReceivedInvitations(); // 重新載入邀請列表
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('接受邀請錯誤:', error);
+                alert('接受邀請失敗，請稍後再試');
+            });
+    }
+
+    // 拒絕邀請
+    function declineInvitation(invitationId) {
+        if (!confirm('確定要拒絕這個群組邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/decline`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('已拒絕邀請');
+                    loadReceivedInvitations();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('拒絕邀請錯誤:', error);
+                alert('拒絕邀請失敗，請稍後再試');
+            });
+    }
+
+    // 取消邀請
+    function cancelInvitation(invitationId) {
+        if (!confirm('確定要取消這個邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('邀請已取消');
+                    loadSentInvitations();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('取消邀請錯誤:', error);
+                alert('取消邀請失敗，請稍後再試');
+            });
+    }
+
+    // 格式化時間
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        if (diffHours < 1) {
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            return diffMinutes <= 1 ? '剛才' : `${diffMinutes}分鐘前`;
+        } else if (diffHours < 24) {
+            return Math.floor(diffHours) + '小時前';
+        } else if (diffDays < 7) {
+            return Math.floor(diffDays) + '天前';
+        } else {
+            return date.toLocaleDateString('zh-TW');
+        }
+    }
+
+    // 獲取狀態文字
+    function getStatusText(status) {
+        const statusMap = {
+            'PENDING': '待處理',
+            'ACCEPTED': '已接受',
+            'DECLINED': '已拒絕',
+            'EXPIRED': '已過期',
+            'CANCELLED': '已取消'
+        };
+        return statusMap[status] || status;
+    }
+</script>
+</body>
+</html>

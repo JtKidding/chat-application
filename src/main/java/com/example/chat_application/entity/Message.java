@@ -11,7 +11,7 @@ public class Message {
     private Long id;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "sender_id")
     private User sender;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -69,6 +69,7 @@ public class Message {
         this.messageType = messageType;
         this.timestamp = LocalDateTime.now();
         this.isRead = true; // 系統訊息預設已讀
+        this.sender = null; // 系統訊息沒有發送者
     }
 
     // 輔助方法

@@ -15,6 +15,10 @@
                 <h2>群組管理</h2>
             </div>
             <div class="nav-right">
+                <a href="/invitations" class="btn btn-secondary" style="position: relative;">
+                    📨 邀請通知
+                    <span class="notification-badge" id="groupsInvitationCount" style="display: none;"></span>
+                </a>
                 <a href="/groups/create" class="btn btn-primary">創建群組</a>
             </div>
         </nav>
@@ -140,8 +144,10 @@
                     <p class="group-description" th:text="${group.description ?: '沒有描述'}"></p>
 
                     <div class="group-actions">
+                        <!-- 修改：先預覽再加入 -->
+                        <a th:href="@{/group/{id}/preview(id=${group.id})}" class="btn btn-secondary">預覽群組</a>
                         <form th:action="@{/groups/{id}/join(id=${group.id})}" method="post" style="display: inline;">
-                            <button type="submit" class="btn btn-primary">加入群組</button>
+                            <button type="submit" class="btn btn-primary">直接加入</button>
                         </form>
                     </div>
                 </div>
@@ -255,6 +261,40 @@
             if (e.key === 'Enter') {
                 searchGroups();
             }
+        });
+
+        // 載入邀請通知數量
+        function loadGroupsInvitationNotifications() {
+            fetch('/api/invitations/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    const badge = document.getElementById('groupsInvitationCount');
+                    if (stats.pendingCount > 0) {
+                        badge.textContent = stats.pendingCount;
+                        badge.style.display = 'inline-block';
+                        badge.style.position = 'absolute';
+                        badge.style.top = '-8px';
+                        badge.style.right = '-8px';
+                        badge.style.background = '#dc3545';
+                        badge.style.color = 'white';
+                        badge.style.fontSize = '0.7rem';
+                        badge.style.padding = '0.2rem 0.5rem';
+                        badge.style.borderRadius = '10px';
+                        badge.style.minWidth = '18px';
+                        badge.style.textAlign = 'center';
+                        badge.style.fontWeight = '600';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('載入邀請通知失敗:', error);
+                });
+        }
+
+        // 頁面載入時執行
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGroupsInvitationNotifications();
         });
     </script>
 </body>

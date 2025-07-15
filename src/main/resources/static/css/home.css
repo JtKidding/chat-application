@@ -489,6 +489,24 @@ body {
 .empty-state p {
     margin-bottom: 1.5rem;
 }
+.notification-badge {
+    background: #dc3545;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    margin-left: auto;
+    min-width: 18px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
 /* 響應式設計 */
 @media (max-width: 1024px) {
     .main-content {

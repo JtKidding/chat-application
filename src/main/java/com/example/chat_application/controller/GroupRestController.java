@@ -177,6 +177,7 @@ public class GroupRestController {
 
             List<Message> messages = messageService.getGroupConversation(group);
 
+
             List<Map<String, Object>> messageList = messages.stream()
                     .map(message -> {
                         Map<String, Object> messageMap = new HashMap<>();
@@ -250,7 +251,7 @@ public class GroupRestController {
 
     // 移除群組成員
     @PostMapping("/{groupId}/members/{userId}/remove")
-    public ResponseEntity<Void> removeMember(
+    public ResponseEntity<Map<String, Object>> removeMember(
             @PathVariable Long groupId,
             @PathVariable Long userId,
             Authentication authentication) {
@@ -259,16 +260,208 @@ public class GroupRestController {
             User currentUser = userService.findByUsername(username).orElse(null);
             User memberToRemove = userService.findById(userId).orElse(null);
 
-            if (currentUser == null || memberToRemove == null) {
-                return ResponseEntity.notFound().build();
+            if (currentUser == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "用戶未認證"));
             }
 
-            groupService.removeMember(groupId, currentUser, memberToRemove);
-            return ResponseEntity.ok().build();
+            if (memberToRemove == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "要移除的用戶不存在"));
+            }
+
+            // 調用 GroupService 的 removeMember 方法
+            boolean success = groupService.removeMember(groupId, currentUser, memberToRemove);
+
+            if (success) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", memberToRemove.getDisplayName() + " 已被移出群組",
+                        "removedUserId", userId,
+                        "removedUserName", memberToRemove.getDisplayName()
+                ));
+            } else {
+                return ResponseEntity.status(500).body(Map.of("error", "移除成員失敗"));
+            }
 
         } catch (RuntimeException e) {
             System.err.println("移除成員失敗: " + e.getMessage());
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("移除成員時發生未預期錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "伺服器內部錯誤: " + e.getMessage()));
+        }
+    }
+
+    // 獲取群組成員列表
+    @GetMapping("/{groupId}/members")
+    public ResponseEntity<List<Map<String, Object>>> getGroupMembers(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Optional<Group> groupOpt = groupService.findById(groupId);
+            if (groupOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Group group = groupOpt.get();
+
+            // 檢查用戶是否為群組成員
+            if (!group.isMember(currentUser)) {
+                return ResponseEntity.status(403).build();
+            }
+
+            List<Map<String, Object>> memberList = group.getMembers().stream()
+                    .map(member -> {
+                        Map<String, Object> memberInfo = new HashMap<>();
+                        memberInfo.put("id", member.getId());
+                        memberInfo.put("username", member.getUsername());
+                        memberInfo.put("displayName", member.getDisplayName());
+                        memberInfo.put("avatarUrl", member.getAvatarUrl() != null ?
+                                "/uploads/avatars/" + member.getAvatarUrl().substring(member.getAvatarUrl().lastIndexOf("/") + 1) :
+                                "/images/default-avatar.png");
+                        memberInfo.put("isOnline", member.isOnline());
+                        memberInfo.put("isCreator", group.isCreator(member));
+                        memberInfo.put("joinedAt", member.getCreatedAt().toString());
+                        return memberInfo;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(memberList);
+
+        } catch (Exception e) {
+            System.err.println("獲取群組成員失敗: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    // 檢查用戶是否為群組成員
+    @GetMapping("/{groupId}/membership")
+    public ResponseEntity<Map<String, Object>> checkMembership(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            boolean isMember = groupService.isUserMemberOfGroup(groupId, currentUser);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("isMember", isMember);
+            result.put("userId", currentUser.getId());
+            result.put("groupId", groupId);
+
+            if (isMember) {
+                Optional<Group> groupOpt = groupService.findById(groupId);
+                if (groupOpt.isPresent()) {
+                    Group group = groupOpt.get();
+                    result.put("isCreator", group.isCreator(currentUser));
+                    result.put("groupName", group.getName());
+                }
+            }
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            System.err.println("檢查群組成員資格失敗: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    // 獲取群組統計資訊
+    @GetMapping("/{groupId}/stats")
+    public ResponseEntity<Map<String, Object>> getGroupStats(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Optional<Group> groupOpt = groupService.findById(groupId);
+            if (groupOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Group group = groupOpt.get();
+
+            // 檢查用戶是否為群組成員
+            if (!group.isMember(currentUser)) {
+                return ResponseEntity.status(403).build();
+            }
+
+            GroupService.GroupStats stats = groupService.getGroupStats(group);
+
+            Map<String, Object> statsMap = new HashMap<>();
+            statsMap.put("memberCount", stats.getMemberCount());
+            statsMap.put("messageCount", stats.getMessageCount());
+            statsMap.put("createdAt", stats.getCreatedAt().toString());
+            statsMap.put("groupId", groupId);
+            statsMap.put("groupName", group.getName());
+
+            return ResponseEntity.ok(statsMap);
+
+        } catch (Exception e) {
+            System.err.println("獲取群組統計失敗: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/{groupId}/dissolve")
+    public ResponseEntity<Map<String, Object>> dissolveGroup(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "用戶未認證"));
+            }
+
+            // 獲取群組資訊（用於返回名稱）
+            Optional<Group> groupOpt = groupService.findById(groupId);
+            if (groupOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "群組不存在"));
+            }
+
+            Group group = groupOpt.get();
+            String groupName = group.getName();
+
+            // 調用 GroupService 的 dissolveGroup 方法
+            boolean success = groupService.dissolveGroup(groupId, currentUser);
+
+            if (success) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "群組「" + groupName + "」已成功解散",
+                        "groupId", groupId,
+                        "groupName", groupName
+                ));
+            } else {
+                return ResponseEntity.status(500).body(Map.of("error", "解散群組失敗"));
+            }
+
+        } catch (RuntimeException e) {
+            System.err.println("解散群組失敗: " + e.getMessage());
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("解散群組時發生未預期錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "伺服器內部錯誤: " + e.getMessage()));
         }
     }
 }

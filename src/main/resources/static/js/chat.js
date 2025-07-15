@@ -3,6 +3,8 @@ let selectedUser = null;
 let selectedGroup = null;
 let messages = new Map(); // 存儲各個對話的訊息
 let groupMessages = new Map(); // 存儲群組對話的訊息
+let modalSelectedUser = null;
+let modalSearchTimeout;
 
 // 當頁面載入完成時初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -18,6 +20,26 @@ document.addEventListener('DOMContentLoaded', function() {
         loadMessagePreviews();
     }
 
+    const modalUserSearch = document.getElementById('modalUserSearch');
+    if (modalUserSearch) {
+        modalUserSearch.addEventListener('input', function() {
+            clearTimeout(modalSearchTimeout);
+            const query = this.value.trim();
+
+            if (query.length >= 2) {
+                modalSearchTimeout = setTimeout(() => searchModalUsers(query), 300);
+            } else {
+                hideModalSearchResults();
+            }
+        });
+    }
+
+    // 點擊彈窗外部關閉
+    document.getElementById('inviteModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeInviteModal();
+        }
+    });
     // 檢查是否有之前選中的用戶
     // const lastSelectedUser = localStorage.getItem('selectedUser');
     // if (lastSelectedUser) {
@@ -116,6 +138,117 @@ function setupEventListeners() {
             stompClient.disconnect();
         }
     });
+}
+
+// 打開邀請彈窗
+function openInviteModal() {
+    document.getElementById('inviteModal').style.display = 'flex';
+    document.getElementById('modalUserSearch').focus();
+}
+
+// 關閉邀請彈窗
+function closeInviteModal() {
+    document.getElementById('inviteModal').style.display = 'none';
+    // 重置表單
+    document.getElementById('modalUserSearch').value = '';
+    document.getElementById('modalInviteMessage').value = '';
+    modalSelectedUser = null;
+    document.getElementById('modalInviteBtn').disabled = true;
+    hideModalSearchResults();
+}
+
+// 搜尋用戶（彈窗版本）
+function searchModalUsers(query) {
+    fetch(`/api/invitations/search-users?query=${encodeURIComponent(query)}&groupId=${groupId}`)
+        .then(response => response.json())
+        .then(users => {
+            displayModalSearchResults(users);
+        })
+        .catch(error => {
+            console.error('搜尋用戶失敗:', error);
+        });
+}
+
+// 顯示搜尋結果（彈窗版本）
+function displayModalSearchResults(users) {
+    const resultsContainer = document.getElementById('modalSearchResults');
+
+    if (users.length === 0) {
+        resultsContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">沒有找到匹配的用戶</div>';
+    } else {
+        resultsContainer.innerHTML = users.map(user => `
+            <div class="search-result-item" onclick="selectModalUser(${user.id}, '${user.username}', '${user.displayName}', '${user.avatarUrl}')">
+                <img src="${user.avatarUrl}" alt="頭像" class="search-result-avatar">
+                <div class="search-result-info">
+                    <div class="search-result-name">${user.displayName}</div>
+                    <div class="search-result-username">@${user.username}</div>
+                </div>
+                ${user.isOnline ? '<span style="color: #28a745;">●</span>' : '<span style="color: #6c757d;">●</span>'}
+            </div>
+        `).join('');
+    }
+
+    resultsContainer.style.display = 'block';
+}
+
+// 選擇用戶（彈窗版本）
+function selectModalUser(id, username, displayName, avatarUrl) {
+    modalSelectedUser = { id, username, displayName, avatarUrl };
+    document.getElementById('modalUserSearch').value = `${displayName} (@${username})`;
+    document.getElementById('modalInviteBtn').disabled = false;
+    hideModalSearchResults();
+}
+
+// 隱藏搜尋結果（彈窗版本）
+function hideModalSearchResults() {
+    document.getElementById('modalSearchResults').style.display = 'none';
+}
+
+// 發送邀請（彈窗版本）
+function sendModalInvitation() {
+    if (!modalSelectedUser) {
+        alert('請先選擇要邀請的用戶');
+        return;
+    }
+
+    const message = document.getElementById('modalInviteMessage').value.trim();
+    const inviteBtn = document.getElementById('modalInviteBtn');
+
+    // 禁用按鈕
+    inviteBtn.textContent = '發送中...';
+    inviteBtn.disabled = true;
+
+    const requestData = {
+        groupId: groupId,
+        inviteeUsername: modalSelectedUser.username,
+        message: message
+    };
+
+    fetch('/api/invitations/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ 邀請已發送給 ${modalSelectedUser.displayName}`);
+                closeInviteModal();
+            } else {
+                alert('❌ 發送邀請失敗: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('發送邀請錯誤:', error);
+            alert('發送邀請失敗，請稍後再試');
+        })
+        .finally(() => {
+            // 恢復按鈕
+            inviteBtn.textContent = '發送邀請';
+            inviteBtn.disabled = modalSelectedUser === null;
+        });
 }
 
 // 私人聊天：選擇用戶開始聊天
@@ -384,8 +517,11 @@ function displayGroupMessage(messageData) {
     const messagesContainer = document.getElementById('messagesContainer');
     const messageElement = document.createElement('div');
 
-    const isSent = messageData.senderUsername === currentUser;
-    const isSystemMessage = messageData.senderUsername === 'system';
+    const isSystemMessage = messageData.messageType === 'SYSTEM' ||
+                                    messageData.senderUsername === 'system' ||
+                                    !messageData.senderUsername;
+
+    const isSent = messageData.senderUsername === currentUser && !isSystemMessage;
 
     if (isSystemMessage) {
         messageElement.className = 'message system-message';
@@ -404,7 +540,7 @@ function displayGroupMessage(messageData) {
         });
 
         let avatarHtml = '';
-        if (!isSent) {
+        if (!isSent && messageData.senderAvatarUrl) {
             avatarHtml = `
                 <div class="message-avatar">
                     <img src="${messageData.senderAvatarUrl}" alt="頭像" 
@@ -413,10 +549,12 @@ function displayGroupMessage(messageData) {
             `;
         }
 
+        const senderName = messageData.senderDisplayName || messageData.senderUsername || '未知用戶';
+
         messageElement.innerHTML = `
             ${avatarHtml}
             <div class="message-content">
-                ${!isSent ? `<div class="sender-name">${escapeHtml(messageData.senderDisplayName)}</div>` : ''}
+                ${!isSent ? `<div class="sender-name">${escapeHtml(senderName)}</div>` : ''}
                 <div class="message-text">${escapeHtml(messageData.content)}</div>
                 <div class="message-info">${timestamp}</div>
             </div>

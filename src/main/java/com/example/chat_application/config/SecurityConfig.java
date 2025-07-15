@@ -30,7 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         // 允許訪問的公開路徑
                         .requestMatchers("/", "/login", "/register", "/css/**", "/js/**",
-                                "/images/**", "/uploads/**", "/h2-console/**").permitAll()
+                                "/images/**", "/uploads/**", "/h2-console/**", "/group/*/preview").permitAll()
                         // 其他所有請求都需要認證
                         .anyRequest().authenticated()
                 )

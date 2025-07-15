@@ -1,8 +1,10 @@
 package com.example.chat_application.controller;
 
 import com.example.chat_application.entity.Group;
+import com.example.chat_application.entity.GroupInvitation;
 import com.example.chat_application.entity.Message;
 import com.example.chat_application.entity.User;
+import com.example.chat_application.service.GroupInvitationService;
 import com.example.chat_application.service.GroupService;
 import com.example.chat_application.service.MessageService;
 import com.example.chat_application.service.UserService;
@@ -33,6 +35,9 @@ public class WebController {
 
     @Autowired
     private MessageService messageService;
+
+    @Autowired
+    private GroupInvitationService invitationService;
 
 //    @GetMapping("/")
 //    public String index() {
@@ -337,6 +342,39 @@ public class WebController {
         return "group-settings";
     }
 
+    @PostMapping("/groups/{groupId}/dissolve")
+    public String dissolveGroupWeb(@PathVariable Long groupId,
+                                   Authentication authentication,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return "redirect:/login";
+            }
+
+            // 獲取群組名稱（用於成功訊息）
+            Optional<Group> groupOpt = groupService.findById(groupId);
+            String groupName = groupOpt.map(Group::getName).orElse("未知群組");
+
+            boolean success = groupService.dissolveGroup(groupId, currentUser);
+
+            if (success) {
+                redirectAttributes.addFlashAttribute("success",
+                        "群組「" + groupName + "」已成功解散");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "解散群組失敗");
+            }
+
+            return "redirect:/groups";
+
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/groups/" + groupId + "/settings";
+        }
+    }
+
     // 更新群組資訊
     @PostMapping("/groups/{groupId}/update")
     public String updateGroup(@PathVariable Long groupId,
@@ -470,5 +508,84 @@ public class WebController {
         }
 
         return "redirect:/profile";
+    }
+
+    @GetMapping("/invitations")
+    public String invitations(Authentication authentication, Model model) {
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username).orElse(null);
+
+        if (currentUser != null) {
+            model.addAttribute("currentUser", currentUser);
+        }
+
+        return "invitations";
+    }
+
+    // 群組預覽頁面（用於邀請）
+    @GetMapping("/group/{groupId}/preview")
+    public String groupPreview(@PathVariable Long groupId,
+                               @RequestParam(required = false) Long invitationId,
+                               Authentication authentication,
+                               Model model,
+                               RedirectAttributes redirectAttributes) {
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username).orElse(null);
+
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+
+        // 使用帶有成員初始化的查詢方法
+        Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
+        if (groupOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "群組不存在");
+            return "redirect:/groups";
+        }
+
+        Group group = groupOpt.get();
+
+        // 如果用戶已經是群組成員，直接跳轉到群組聊天
+        if (group.isMember(currentUser)) {
+            return "redirect:/group/" + groupId;
+        }
+
+        // 修復頭像URL
+        group.getMembers().forEach(member -> {
+            String avatarUrl = member.getAvatarUrl();
+            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+                member.setAvatarUrl("/images/default-avatar.png");
+            } else if (!avatarUrl.startsWith("/uploads/") && !avatarUrl.startsWith("/images/")) {
+                member.setAvatarUrl("/uploads/avatars/" + avatarUrl);
+            }
+        });
+
+        // 設置群組頭像
+        String groupAvatarUrl = group.getAvatarUrl();
+        if (groupAvatarUrl == null || groupAvatarUrl.trim().isEmpty()) {
+            group.setAvatarUrl("/images/default-group.png");
+        } else if (!groupAvatarUrl.startsWith("/uploads/") && !groupAvatarUrl.startsWith("/images/")) {
+            group.setAvatarUrl("/uploads/groups/" + groupAvatarUrl);
+        }
+
+        // 如果提供了邀請ID，獲取邀請詳情
+        GroupInvitation invitation = null;
+        if (invitationId != null) {
+            Optional<GroupInvitation> invitationOpt = invitationService.getInvitationById(invitationId);
+            if (invitationOpt.isPresent()) {
+                invitation = invitationOpt.get();
+                // 驗證邀請是否屬於當前用戶
+                if (!invitation.getInvitee().equals(currentUser)) {
+                    redirectAttributes.addFlashAttribute("error", "無效的邀請");
+                    return "redirect:/invitations";
+                }
+            }
+        }
+
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("group", group);
+        model.addAttribute("invitation", invitation);
+
+        return "group-preview";
     }
 }

@@ -20,6 +20,7 @@
                 <div class="nav-dropdown">
                     <button class="dropdown-btn">▼</button>
                     <div class="dropdown-content">
+                        <a href="/invitations">📨 群組邀請</a>
                         <a href="/profile">個人資料</a>
                         <a href="/logout">登出</a>
                     </div>
@@ -42,6 +43,10 @@
                         </a></li>
                         <li><a href="/groups/create" class="nav-link">
                             <span class="icon">➕</span>創建群組
+                        </a></li>
+                        <li><a href="/invitations" class="nav-link">
+                            <span class="icon">📨</span>群組邀請
+                            <span class="notification-badge" id="invitationCount" style="display: none;"></span>
                         </a></li>
                     </ul>
                 </div>
@@ -186,6 +191,31 @@
                     dropdowns[i].classList.remove('show');
                 }
             }
+        });
+        // 載入邀請通知數量
+        function loadInvitationNotifications() {
+            fetch('/api/invitations/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    const badge = document.getElementById('invitationCount');
+                    if (stats.pendingCount > 0) {
+                        badge.textContent = stats.pendingCount;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('載入邀請通知失敗:', error);
+                });
+        }
+
+        // 頁面載入時獲取通知
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInvitationNotifications();
+
+            // 每30秒更新一次通知
+            setInterval(loadInvitationNotifications, 30000);
         });
     </script>
 </body>

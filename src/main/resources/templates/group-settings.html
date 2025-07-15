@@ -5,184 +5,697 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>群組設定 - <span th:text="${group.name}"></span></title>
     <link rel="stylesheet" href="/css/group-settings.css">
+    <style>
+        /* 邀請功能相關樣式 */
+        .invite-section {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+            border: 1px solid #bbdefb;
+        }
+
+        .invite-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .user-search {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .search-result-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .search-result-info {
+            flex: 1;
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .search-result-username {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .invite-message {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .pending-invitations {
+            margin-top: 1.5rem;
+        }
+
+        .invitation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e1e8ed;
+        }
+
+        .invitation-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .invitation-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .invitation-details {
+            flex: 1;
+        }
+
+        .invitation-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .invitation-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .invitation-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-accepted {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-declined {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-expired {
+            background: #e2e3e5;
+            color: #495057;
+        }
+    </style>
 </head>
 <body>
-    <div class="settings-container">
-        <!-- 頂部導航 -->
-        <nav class="top-nav">
-            <div class="nav-left">
-                <a th:href="@{/group/{id}(id=${group.id})}" class="back-btn">← 返回聊天</a>
-                <h2>群組設定</h2>
-            </div>
-        </nav>
-
-        <!-- 成功/錯誤訊息 -->
-        <div th:if="${success}" class="success-message" th:text="${success}"></div>
-        <div th:if="${error}" class="error-message" th:text="${error}"></div>
-
-        <div class="settings-content">
-            <!-- 群組資訊區域 -->
-            <section class="settings-section">
-                <h3>群組頭像</h3>
-                <div class="avatar-section">
-                    <div class="current-avatar">
-                        <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
-                             alt="群組頭像" class="avatar-preview" id="avatarPreview">
-                    </div>
-                    <div class="avatar-controls">
-                        <form th:action="@{/groups/{id}/upload-avatar(id=${group.id})}"
-                              method="post" enctype="multipart/form-data" class="upload-form">
-                            <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;">
-                            <button type="button" onclick="document.getElementById('avatarInput').click()"
-                                    class="btn btn-primary">選擇新頭像</button>
-                            <button type="submit" class="btn btn-success" id="uploadBtn" style="display: none;">
-                                上傳
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 基本設定 -->
-            <section class="settings-section">
-                <h3>基本設定</h3>
-                <form th:action="@{/groups/{id}/update(id=${group.id})}" method="post" class="settings-form">
-                    <div class="form-group">
-                        <label for="name">群組名稱 *</label>
-                        <input type="text" id="name" name="name" th:value="${group.name}" required maxlength="50">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">群組描述</label>
-                        <textarea id="description" name="description" rows="3"
-                                  maxlength="200" th:text="${group.description}"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="isPrivate" value="true"
-                                   th:checked="${group.private}">
-                            <span class="checkmark"></span>
-                            <div class="checkbox-content">
-                                <strong>私人群組</strong>
-                                <p>只有受邀用戶才能加入</p>
-                            </div>
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">更新設定</button>
-                </form>
-            </section>
-
-            <!-- 群組統計 -->
-            <section class="settings-section">
-                <h3>群組統計</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" th:text="${groupStats.memberCount}"></div>
-                        <div class="stat-label">成員數量</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" th:text="${groupStats.messageCount}"></div>
-                        <div class="stat-label">訊息總數</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" th:text="${#temporals.format(groupStats.createdAt, 'MM/dd')}"></div>
-                        <div class="stat-label">創建日期</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 成員管理 -->
-            <section class="settings-section">
-                <h3>成員管理</h3>
-                <div class="members-list">
-                    <div th:each="member : ${group.members}" class="member-item">
-                        <div class="member-info">
-                            <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
-                                 alt="頭像" class="member-avatar">
-                            <div class="member-details">
-                                <div class="member-name" th:text="${member.displayName}"></div>
-                                <div class="member-status">
-                                    <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
-                                    <span th:unless="${group.creator.equals(member)}"
-                                          th:text="${member.online ? '線上' : '離線'}"
-                                          th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="member-actions" th:unless="${group.creator.equals(member)}">
-                            <button onclick="removeMember(${member.id}, '${member.displayName}')"
-                                    class="btn btn-danger btn-sm">移除</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 危險區域 -->
-            <section class="settings-section danger-section">
-                <h3>危險操作</h3>
-                <div class="danger-actions">
-                    <div class="danger-item">
-                        <div class="danger-info">
-                            <h4>解散群組</h4>
-                            <p>永久刪除這個群組和所有聊天記錄</p>
-                        </div>
-                        <button onclick="confirmDissolve()" class="btn btn-danger">解散群組</button>
-                    </div>
-                </div>
-            </section>
+<div class="settings-container">
+    <!-- 頂部導航 -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a th:href="@{/group/{id}(id=${group.id})}" class="back-btn">← 返回聊天</a>
+            <h2>群組設定</h2>
         </div>
-    </div>
+    </nav>
 
-    <script>
-        // 頭像預覽功能
-        document.getElementById('avatarInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('avatarPreview').src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-                document.getElementById('uploadBtn').style.display = 'inline-block';
+    <!-- 成功/錯誤訊息 -->
+    <div th:if="${success}" class="success-message" th:text="${success}"></div>
+    <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+    <div class="settings-content">
+        <!-- 邀請成員區域 -->
+        <section class="settings-section invite-section">
+            <h3>邀請成員</h3>
+            <div class="invite-form">
+                <div class="search-container">
+                    <input type="text" id="userSearch" class="user-search"
+                           placeholder="搜尋用戶名或顯示名稱..."
+                           autocomplete="off">
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="inviteMessage">邀請訊息（可選）</label>
+                    <textarea id="inviteMessage" class="invite-message"
+                              placeholder="歡迎加入我們的群組！"></textarea>
+                </div>
+
+                <button type="button" onclick="sendInvitation()" class="btn btn-primary" id="inviteBtn" disabled>
+                    發送邀請
+                </button>
+            </div>
+
+            <!-- 待處理邀請列表 -->
+            <div class="pending-invitations">
+                <h4>待處理邀請</h4>
+                <div id="pendingInvitationsList">
+                    <!-- 邀請列表會在這裡動態載入 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 原有的其他設定區域保持不變 -->
+        <!-- 群組資訊區域 -->
+        <section class="settings-section">
+            <h3>群組頭像</h3>
+            <div class="avatar-section">
+                <div class="current-avatar">
+                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                         alt="群組頭像" class="avatar-preview" id="avatarPreview">
+                </div>
+                <div class="avatar-controls">
+                    <form th:action="@{/groups/{id}/upload-avatar(id=${group.id})}"
+                          method="post" enctype="multipart/form-data" class="upload-form">
+                        <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;">
+                        <button type="button" onclick="document.getElementById('avatarInput').click()"
+                                class="btn btn-primary">選擇新頭像</button>
+                        <button type="submit" class="btn btn-success" id="uploadBtn" style="display: none;">
+                            上傳
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 基本設定 -->
+        <section class="settings-section">
+            <h3>基本設定</h3>
+            <form th:action="@{/groups/{id}/update(id=${group.id})}" method="post" class="settings-form">
+                <div class="form-group">
+                    <label for="name">群組名稱 *</label>
+                    <input type="text" id="name" name="name" th:value="${group.name}" required maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">群組描述</label>
+                    <textarea id="description" name="description" rows="3"
+                              maxlength="200" th:text="${group.description}"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="isPrivate" value="true"
+                               th:checked="${group.private}">
+                        <span class="checkmark"></span>
+                        <div class="checkbox-content">
+                            <strong>私人群組</strong>
+                            <p>只有受邀用戶才能加入</p>
+                        </div>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">更新設定</button>
+            </form>
+        </section>
+
+        <!-- 群組統計 -->
+        <section class="settings-section">
+            <h3>群組統計</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" th:text="${groupStats.memberCount}"></div>
+                    <div class="stat-label">成員數量</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" th:text="${groupStats.messageCount}"></div>
+                    <div class="stat-label">訊息總數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" th:text="${#temporals.format(groupStats.createdAt, 'MM/dd')}"></div>
+                    <div class="stat-label">創建日期</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成員管理 -->
+        <section class="settings-section">
+            <h3>成員管理</h3>
+            <div class="members-list">
+                <div th:each="member : ${group.members}" class="member-item">
+                    <div class="member-info">
+                        <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                             alt="頭像" class="member-avatar">
+                        <div class="member-details">
+                            <div class="member-name" th:text="${member.displayName}"></div>
+                            <div class="member-status">
+                                <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
+                                <span th:unless="${group.creator.equals(member)}"
+                                      th:text="${member.online ? '線上' : '離線'}"
+                                      th:class="${member.online ? 'online-status' : 'offline-status'}"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="member-actions" th:unless="${group.creator.equals(member)}">
+                        <button class="btn btn-danger btn-sm remove-member-btn"
+                                th:data-user-id="${member.id}"
+                                th:data-user-name="${member.displayName}">移除</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 危險區域 -->
+        <section class="settings-section danger-section">
+            <h3>危險操作</h3>
+            <div class="danger-actions">
+                <div class="danger-item">
+                    <div class="danger-info">
+                        <h4>解散群組</h4>
+                        <p>永久刪除這個群組和所有聊天記錄</p>
+                    </div>
+                    <button onclick="confirmDissolve()" class="btn btn-danger">解散群組</button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // 使用 Thymeleaf 內聯 JavaScript 來獲取群組資訊
+    var groupId = /*[[${group.id}]]*/ null;
+    var groupName = /*[[${group.name}]]*/ '';
+    var selectedUser = null; // 選中要邀請的用戶
+
+    // 邀請功能相關變數
+    let searchTimeout;
+
+    // 頁面載入時的初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 載入待處理邀請
+        loadPendingInvitations();
+
+        // 設置搜尋輸入事件
+        const userSearch = document.getElementById('userSearch');
+        userSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length >= 2) {
+                searchTimeout = setTimeout(() => searchUsers(query), 300);
+            } else {
+                hideSearchResults();
             }
         });
 
-        // 移除成員
-        function removeMember(userId, userName) {
-            if (confirm(`確定要將 ${userName} 移出群組嗎？`)) {
-                fetch(`/api/groups/${[[${group.id}]]}/members/${userId}/remove`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                    .then(response => {
-                        if (response.ok) {
-                            location.reload();
-                        } else {
-                            alert('移除成員失敗');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('操作失敗');
-                    });
+        // 點擊外部隱藏搜尋結果
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                hideSearchResults();
             }
+        });
+
+        // 為所有移除成員按鈕添加點擊事件
+        const removeBtns = document.querySelectorAll('.remove-member-btn');
+        removeBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                const userName = this.getAttribute('data-user-name');
+                removeMember(userId, userName);
+            });
+        });
+    });
+
+    // 搜尋用戶
+    function searchUsers(query) {
+        fetch(`/api/invitations/search-users?query=${encodeURIComponent(query)}&groupId=${groupId}`)
+            .then(response => response.json())
+            .then(users => {
+                displaySearchResults(users);
+            })
+            .catch(error => {
+                console.error('搜尋用戶失敗:', error);
+            });
+    }
+
+    // 顯示搜尋結果
+    function displaySearchResults(users) {
+        const resultsContainer = document.getElementById('searchResults');
+
+        if (users.length === 0) {
+            resultsContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">沒有找到匹配的用戶</div>';
+        } else {
+            resultsContainer.innerHTML = users.map(user => `
+                    <div class="search-result-item" onclick="selectUser(${user.id}, '${user.username}', '${user.displayName}', '${user.avatarUrl}')">
+                        <img src="${user.avatarUrl}" alt="頭像" class="search-result-avatar">
+                        <div class="search-result-info">
+                            <div class="search-result-name">${user.displayName}</div>
+                            <div class="search-result-username">@${user.username}</div>
+                        </div>
+                        ${user.isOnline ? '<span style="color: #28a745;">●</span>' : '<span style="color: #6c757d;">●</span>'}
+                    </div>
+                `).join('');
         }
 
-        // 確認解散群組
-        function confirmDissolve() {
-            const groupName = '[[${group.name}]]';
-            if (confirm(`確定要解散群組「${groupName}」嗎？此操作無法撤銷！`)) {
-                if (confirm('這將會永久刪除所有聊天記錄，您確定要繼續嗎？')) {
-                    // 這裡可以添加解散群組的API調用
-                    alert('解散群組功能尚未實現');
+        resultsContainer.style.display = 'block';
+    }
+
+    // 選擇用戶
+    function selectUser(id, username, displayName, avatarUrl) {
+        selectedUser = { id, username, displayName, avatarUrl };
+        document.getElementById('userSearch').value = `${displayName} (@${username})`;
+        document.getElementById('inviteBtn').disabled = false;
+        hideSearchResults();
+    }
+
+    // 隱藏搜尋結果
+    function hideSearchResults() {
+        document.getElementById('searchResults').style.display = 'none';
+    }
+
+    // 發送邀請
+    function sendInvitation() {
+        if (!selectedUser) {
+            alert('請先選擇要邀請的用戶');
+            return;
+        }
+
+        const message = document.getElementById('inviteMessage').value.trim();
+        const inviteBtn = document.getElementById('inviteBtn');
+
+        // 禁用按鈕
+        inviteBtn.textContent = '發送中...';
+        inviteBtn.disabled = true;
+
+        const requestData = {
+            groupId: groupId,
+            inviteeUsername: selectedUser.username,
+            message: message
+        };
+
+        fetch('/api/invitations/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`邀請已發送給 ${selectedUser.displayName}`);
+                    // 重置表單
+                    document.getElementById('userSearch').value = '';
+                    document.getElementById('inviteMessage').value = '';
+                    selectedUser = null;
+                    // 重新載入待處理邀請
+                    loadPendingInvitations();
+                } else {
+                    alert('發送邀請失敗: ' + data.error);
                 }
+            })
+            .catch(error => {
+                console.error('發送邀請錯誤:', error);
+                alert('發送邀請失敗，請稍後再試');
+            })
+            .finally(() => {
+                // 恢復按鈕
+                inviteBtn.textContent = '發送邀請';
+                inviteBtn.disabled = selectedUser === null;
+            });
+    }
+
+    // 載入待處理邀請
+    function loadPendingInvitations() {
+        fetch(`/api/invitations/group/${groupId}`)
+            .then(response => response.json())
+            .then(invitations => {
+                displayPendingInvitations(invitations.filter(inv => inv.status === 'PENDING'));
+            })
+            .catch(error => {
+                console.error('載入邀請失敗:', error);
+            });
+    }
+
+    // 顯示待處理邀請
+    function displayPendingInvitations(invitations) {
+        const container = document.getElementById('pendingInvitationsList');
+
+        if (invitations.length === 0) {
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">目前沒有待處理的邀請</p>';
+            return;
+        }
+
+        container.innerHTML = invitations.map(invitation => `
+                <div class="invitation-item">
+                    <div class="invitation-info">
+                        <img src="${invitation.invitee.avatarUrl}" alt="頭像" class="invitation-avatar">
+                        <div class="invitation-details">
+                            <div class="invitation-name">${invitation.invitee.displayName}</div>
+                            <div class="invitation-time">邀請於 ${new Date(invitation.createdAt).toLocaleString('zh-TW')}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="invitation-status status-${invitation.status.toLowerCase()}">${getStatusText(invitation.status)}</span>
+                        <button onclick="cancelInvitation(${invitation.id})" class="btn btn-danger btn-sm">取消</button>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    // 取消邀請
+    function cancelInvitation(invitationId) {
+        if (!confirm('確定要取消這個邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('邀請已取消');
+                    loadPendingInvitations();
+                } else {
+                    alert('取消邀請失敗: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('取消邀請錯誤:', error);
+                alert('取消邀請失敗，請稍後再試');
+            });
+    }
+
+    // 獲取狀態文字
+    function getStatusText(status) {
+        const statusMap = {
+            'PENDING': '待處理',
+            'ACCEPTED': '已接受',
+            'DECLINED': '已拒絕',
+            'EXPIRED': '已過期',
+            'CANCELLED': '已取消'
+        };
+        return statusMap[status] || status;
+    }
+
+    // 原有的其他函數保持不變...
+
+    // 頭像預覽功能
+    document.getElementById('avatarInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatarPreview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            document.getElementById('uploadBtn').style.display = 'inline-block';
+        }
+    });
+
+    // 移除成員功能
+    function removeMember(userId, userName) {
+        console.log('準備移除成員:', userId, userName);
+
+        if (confirm(`確定要將 ${userName} 移出群組嗎？`)) {
+            const btn = document.querySelector(`[data-user-id="${userId}"]`);
+            if (btn) {
+                btn.textContent = '處理中...';
+                btn.disabled = true;
+            }
+
+            fetch(`/api/groups/${groupId}/members/${userId}/remove`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => {
+                    console.log('API 回應狀態:', response.status);
+
+                    if (response.ok) {
+                        alert(`${userName} 已被移出群組`);
+                        location.reload();
+                    } else {
+                        return response.text().then(text => {
+                            throw new Error(`移除成員失敗: ${response.status} - ${text}`);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('移除成員錯誤:', error);
+                    alert('移除成員失敗: ' + error.message);
+
+                    if (btn) {
+                        btn.textContent = '移除';
+                        btn.disabled = false;
+                    }
+                });
+        }
+    }
+
+    // 確認解散群組
+    function confirmDissolve() {
+        if (confirm(`⚠️ 確定要解散群組「${groupName}」嗎？\n\n此操作將會：\n• 永久刪除群組\n• 刪除所有聊天記錄\n• 移除所有成員\n• 無法復原\n\n請慎重考慮！`)) {
+            const userConfirmation = prompt(`請輸入群組名稱「${groupName}」來確認解散操作：`);
+            if (userConfirmation !== groupName) {
+                if (userConfirmation !== null) {
+                    alert('❌ 群組名稱不正確，解散操作已取消');
+                }
+                return;
+            }
+
+            if (confirm(`🚨 最後確認\n\n您即將解散群組「${groupName}」\n\n這個操作無法撤銷，所有數據將永久丟失！\n\n確定要繼續嗎？`)) {
+                dissolveGroup();
             }
         }
-    </script>
+    }
+
+    // 執行解散群組
+    function dissolveGroup() {
+        const dissolveBtn = document.querySelector('button[onclick="confirmDissolve()"]');
+        if (dissolveBtn) {
+            dissolveBtn.textContent = '解散中...';
+            dissolveBtn.disabled = true;
+            dissolveBtn.style.opacity = '0.5';
+        }
+
+        showLoadingMessage('正在解散群組，請稍候...');
+
+        fetch(`/api/groups/${groupId}/dissolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                console.log('解散群組 API 回應狀態:', response.status);
+
+                if (response.ok) {
+                    return response.json().then(data => {
+                        console.log('解散群組成功:', data);
+                        hideLoadingMessage();
+                        alert(`✅ ${data.message || '群組已成功解散'}`);
+                        window.location.href = '/groups';
+                    });
+                } else {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.error || `解散失敗: HTTP ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`解散失敗: HTTP ${response.status}`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('解散群組錯誤:', error);
+                hideLoadingMessage();
+
+                if (dissolveBtn) {
+                    dissolveBtn.textContent = '解散群組';
+                    dissolveBtn.disabled = false;
+                    dissolveBtn.style.opacity = '1';
+                }
+
+                alert('❌ 解散群組失敗: ' + error.message);
+            });
+    }
+
+    // 顯示載入訊息
+    function showLoadingMessage(message) {
+        hideLoadingMessage();
+
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loading-message';
+        loadingDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 10px;
+                z-index: 10000;
+                font-size: 16px;
+                text-align: center;
+            `;
+        loadingDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">⏳</div>
+                <div>${message}</div>
+            `;
+
+        document.body.appendChild(loadingDiv);
+    }
+
+    // 隱藏載入訊息
+    function hideLoadingMessage() {
+        const loadingDiv = document.getElementById('loading-message');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+    }
+</script>
 </body>
 </html>

@@ -177,6 +177,25 @@ body {
     display: block !important;
 }
 
+/* 確保圖片載入失敗時的處理 */
+.group-avatar:not([src]),
+.group-avatar[src=""],
+.group-avatar[src="/images/default-group.png"] {
+    background-image: url('/images/default-group.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.chat-header-avatar:not([src]),
+.chat-header-avatar[src=""],
+.chat-header-avatar[src="/images/default-group.png"] {
+    background-image: url('/images/default-group.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
 /* 群組聊天標題容器 */
 .group-chat-header {
     display: flex !important;
@@ -203,8 +222,13 @@ body {
 }
 
 .group-info {
-    flex: 1;
-    min-width: 0;
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+    margin-bottom: 15px !important;
+    padding: 15px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
 }
 
 .group-info h3 {
@@ -270,6 +294,23 @@ body {
     color: white;
 }
 
+.group-details {
+    flex: 1 !important;
+}
+
+.group-details h3 {
+    color: white !important;
+    margin: 0 !important;
+    margin-bottom: 5px !important;
+    font-size: 16px !important;
+}
+
+.group-details p {
+    color: rgba(255, 255, 255, 0.8) !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+}
+
 /* 群組描述 */
 .group-description {
     color: #555;
@@ -309,12 +350,30 @@ body {
     color: #666;
 }
 
-/* 群組操作 */
+/* 群組操作按鈕樣式優化 */
 .group-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    display: flex !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    flex-wrap: wrap !important;
 }
+
+.group-actions .profile-btn,
+.group-actions .logout-btn {
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    border-radius: 12px !important;
+    text-decoration: none !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    transition: background 0.3s !important;
+}
+
+.group-actions .profile-btn:hover,
+.group-actions .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
 
 /* 特殊卡片樣式 */
 .creator-card {
@@ -459,13 +518,33 @@ body {
         margin-top: 0.5rem;
     }
 
+    .group-info {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 10px !important;
+    }
+
     .group-actions {
-        justify-content: center;
+        justify-content: center !important;
     }
 
     .group-stats {
         flex-direction: column;
         gap: 0.5rem;
+    }
+
+    .chat-header .group-chat-header {
+        flex-direction: row !important;
+        align-items: center !important;
+        text-align: left !important;
+    }
+
+    .chat-header-info h3 {
+        font-size: 16px !important;
+    }
+
+    .chat-header-info p {
+        font-size: 0.8rem !important;
     }
 }
 
@@ -489,5 +568,280 @@ body {
 
     .group-actions {
         flex-direction: column;
+    }
+}
+
+.preview-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #f5f7fa;
+    min-height: 100vh;
+}
+
+.preview-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.group-avatar-large {
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 4px solid #667eea !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.group-info {
+    flex: 1;
+}
+
+.group-name {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.group-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.group-description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #555;
+}
+
+.members-section {
+    margin-top: 2rem;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.member-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #e1e8ed;
+    transition: all 0.3s;
+}
+
+.member-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.member-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 0.5rem;
+}
+
+.member-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.member-status {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.creator-badge {
+    background: #ffd700;
+    color: #8b6914;
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.actions-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.actions-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.actions-subtitle {
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-white {
+    background: white;
+    color: #667eea;
+    border: 2px solid white;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-white:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.btn-outline-white {
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-outline-white:hover {
+    background: white;
+    color: #667eea;
+}
+
+.invitation-info {
+    background: #e8f5e8;
+    border: 1px solid #b3d9b3;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.invitation-message {
+    font-style: italic;
+    color: #2d5a2d;
+    margin-bottom: 0.5rem;
+}
+
+.invitation-from {
+    font-size: 0.9rem;
+    color: #4a7c4a;
+}
+
+.privacy-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #e1e8ed;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #667eea;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .preview-container {
+        padding: 1rem;
+    }
+
+    .group-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .group-avatar-large {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .group-name {
+        font-size: 1.5rem;
+    }
+
+    .members-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
     }
 }
