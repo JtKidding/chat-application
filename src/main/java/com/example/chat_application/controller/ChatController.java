@@ -3,6 +3,7 @@ package com.example.chat_application.controller;
 import com.example.chat_application.entity.Group;
 import com.example.chat_application.entity.Message;
 import com.example.chat_application.entity.User;
+import com.example.chat_application.repository.GroupRepository;
 import com.example.chat_application.service.GroupService;
 import com.example.chat_application.service.MessageService;
 import com.example.chat_application.service.UserService;
@@ -31,6 +32,9 @@ public class ChatController {
 
     @Autowired
     private GroupService groupService;
+
+    @Autowired
+    private GroupRepository groupRepository;
 
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload Map<String, String> payload, Principal principal) {
@@ -108,51 +112,102 @@ public class ChatController {
         String groupIdStr = payload.get("groupId");
         String content = payload.get("content");
 
+        System.out.println("=== 收到群組訊息請求 ===");
+        System.out.println("發送者: " + senderUsername);
+        System.out.println("群組ID: " + groupIdStr);
+        System.out.println("內容: " + content);
+
         try {
             Long groupId = Long.parseLong(groupIdStr);
             User sender = userService.findByUsername(senderUsername).orElse(null);
 
-            if (sender != null) {
-                // 使用安全的成員檢查方法
-                boolean isMember = groupService.isUserMemberOfGroup(groupId, sender);
+            if (sender == null) {
+                System.err.println("找不到發送者用戶: " + senderUsername);
+                return;
+            }
 
-                if (!isMember) {
-                    return; // 非群組成員，拒絕發送
+//            // 使用安全的成員檢查方法
+//            boolean isMember = groupService.isUserMemberOfGroup(groupId, sender);
+//            System.out.println("用戶是否為群組成員: " + isMember);
+
+            System.out.println("發送者用戶 ID: " + sender.getId() + ", 用戶名: " + sender.getUsername());
+
+            // 使用多種方法檢查成員資格，確保準確性
+            boolean isMemberByService = groupService.isUserMemberOfGroup(groupId, sender);
+            boolean isMemberByRepository = groupRepository.isUserMemberOfGroupByUsername(groupId, senderUsername);
+
+            System.out.println("Service 檢查結果: " + isMemberByService);
+            System.out.println("Repository 檢查結果: " + isMemberByRepository);
+
+            // 如果任一方法返回 true，就認為是成員
+            boolean isMember = isMemberByService || isMemberByRepository;
+
+            System.out.println("最終成員檢查結果: " + isMember);
+
+            if (!isMember) {
+                System.err.println("用戶不是群組成員，拒絕發送訊息");
+
+                // 額外調試：查看群組的所有成員
+                try {
+                    Optional<Group> debugGroup = groupService.findByIdWithMembers(groupId);
+                    if (debugGroup.isPresent()) {
+                        System.err.println("群組 " + debugGroup.get().getName() + " 的所有成員:");
+                        debugGroup.get().getMembers().forEach(member ->
+                                System.err.println("  - ID: " + member.getId() + ", 用戶名: " + member.getUsername())
+                        );
+                    }
+                } catch (Exception debugEx) {
+                    System.err.println("調試群組成員時發生錯誤: " + debugEx.getMessage());
                 }
 
-                // 獲取群組信息（帶有已初始化的成員）
-                Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
+                return;
+            }
 
-                if (groupOpt.isPresent()) {
-                    Group group = groupOpt.get();
+            // 獲取群組信息（帶有已初始化的成員）
+            Optional<Group> groupOpt = groupService.findByIdWithMembers(groupId);
 
-                    // 儲存群組訊息到資料庫
-                    Message message = messageService.saveGroupMessage(sender, group, content);
+            if (groupOpt.isPresent()) {
+                Group group = groupOpt.get();
+                System.out.println("群組資訊: " + group.getName() + ", 成員數: " + group.getMembers().size());
 
-                    // 準備訊息資料
-                    Map<String, Object> messageData = Map.of(
-                            "id", message.getId(),
-                            "senderUsername", sender.getUsername(),
-                            "senderDisplayName", sender.getDisplayName(),
-                            "senderAvatarUrl", sender.getAvatarUrl() != null ?
-                                    "/uploads/avatars/" + sender.getAvatarUrl().substring(sender.getAvatarUrl().lastIndexOf("/") + 1) :
-                                    "/images/default-avatar.png",
-                            "content", message.getContent(),
-                            "timestamp", message.getTimestamp().toString(),
-                            "groupId", group.getId(),
-                            "groupName", group.getName(),
-                            "messageType", "group"
-                    );
+                // 儲存群組訊息到資料庫
+                Message message = messageService.saveGroupMessage(sender, group, content);
+                System.out.println("訊息已儲存到資料庫，ID: " + message.getId());
 
-                    // 發送訊息給群組中的所有成員
-                    group.getMembers().forEach(member -> {
+                // 準備訊息資料
+                Map<String, Object> messageData = Map.of(
+                        "id", message.getId(),
+                        "senderUsername", sender.getUsername(),
+                        "senderDisplayName", sender.getDisplayName(),
+                        "senderAvatarUrl", sender.getAvatarUrl() != null ?
+                                "/uploads/avatars/" + sender.getAvatarUrl().substring(sender.getAvatarUrl().lastIndexOf("/") + 1) :
+                                "/images/default-avatar.png",
+                        "content", message.getContent(),
+                        "timestamp", message.getTimestamp().toString(),
+                        "groupId", group.getId(),
+                        "groupName", group.getName(),
+                        "messageType", "group"
+                );
+
+                System.out.println("準備發送訊息給 " + group.getMembers().size() + " 位成員");
+
+                // 發送訊息給群組中的所有成員
+                int sentCount = 0;
+                for (User member : group.getMembers()) {
+                    try {
                         messagingTemplate.convertAndSendToUser(
                                 member.getUsername(),
                                 "/queue/group-messages",
                                 messageData
                         );
-                    });
+                        sentCount++;
+                        System.out.println("已發送給: " + member.getUsername());
+                    } catch (Exception e) {
+                        System.err.println("發送給用戶 " + member.getUsername() + " 失敗: " + e.getMessage());
+                    }
                 }
+
+                System.out.println("總共發送給 " + sentCount + " 位成員");
             }
         } catch (NumberFormatException e) {
             System.err.println("無效的群組ID: " + groupIdStr);

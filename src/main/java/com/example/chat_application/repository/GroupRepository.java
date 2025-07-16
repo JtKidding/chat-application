@@ -44,8 +44,16 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     List<Group> findByMembersContainingWithMembers(@Param("user") User user);
 
     // 檢查用戶是否為群組成員（避免懶加載）
+    @Query("SELECT COUNT(g) > 0 FROM Group g JOIN g.members m WHERE g.id = :groupId AND m.id = :userId")
+    boolean isUserMemberOfGroupById(@Param("groupId") Long groupId, @Param("userId") Long userId);
+
+    // 保留原有的方法，但也加入基於 ID 的版本
     @Query("SELECT COUNT(g) > 0 FROM Group g JOIN g.members m WHERE g.id = :groupId AND m = :user")
     boolean isUserMemberOfGroup(@Param("groupId") Long groupId, @Param("user") User user);
+
+    // 新增：根據 ID 和用戶名檢查成員資格
+    @Query("SELECT COUNT(g) > 0 FROM Group g JOIN g.members m WHERE g.id = :groupId AND m.username = :username")
+    boolean isUserMemberOfGroupByUsername(@Param("groupId") Long groupId, @Param("username") String username);
 
     // 查找群組的成員數量
     @Query("SELECT SIZE(g.members) FROM Group g WHERE g.id = :groupId")

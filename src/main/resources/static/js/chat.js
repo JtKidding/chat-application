@@ -8,12 +8,17 @@ let modalSearchTimeout;
 
 // 當頁面載入完成時初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('頁面載入完成，初始化聊天...');
+    console.log('聊天類型:', chatType);
+    console.log('群組ID:', groupId);
+
     connect();
     setupEventListeners();
 
     if (chatType === 'group' && groupId) {
         // 如果是群組聊天，自動載入群組訊息
-        selectedGroup = groupId;
+        selectedGroup = parseInt(groupId);
+        console.log('設置選中群組:', selectedGroup);
         loadGroupChatHistory(groupId);
     } else if (chatType === 'private') {
         // 載入用戶的最後訊息預覽
@@ -62,27 +67,33 @@ function connect() {
         console.log('Connected: ' + frame);
 
         if (chatType === 'private') {
+            console.log('訂閱私人訊息');
             // 訂閱個人訊息
             stompClient.subscribe('/user/queue/messages', function(message) {
+                console.log('收到私人訊息原始數據:', message.body);
                 const messageData = JSON.parse(message.body);
                 // handleIncomingMessage(messageData);
                 handleIncomingPrivateMessage(messageData);
             });
         } else if (chatType === 'group') {
+            console.log('訂閱群組訊息，群組ID:', groupId);
             // 訂閱群組訊息
             stompClient.subscribe('/user/queue/group-messages', function(message) {
+                console.log('收到群組訊息原始數據:', message.body);
                 const messageData = JSON.parse(message.body);
                 handleIncomingGroupMessage(messageData);
             });
 
             // 訂閱群組更新
             stompClient.subscribe('/user/queue/group-updates', function(message) {
+                console.log('收到群組更新:', message.body);
                 const updateData = JSON.parse(message.body);
                 handleGroupUpdate(updateData);
             });
 
             // 加入群組
             if (groupId) {
+                console.log('發送加入群組訊息:', groupId);
                 stompClient.send("/app/chat.joinGroup", {}, JSON.stringify({
                     groupId: groupId.toString()
                 }));
@@ -96,6 +107,7 @@ function connect() {
         });
 
         // 通知伺服器用戶已上線
+        console.log('發送用戶上線通知:', currentUser);
         stompClient.send("/app/chat.addUser", {}, JSON.stringify({
             username: currentUser
         }));
@@ -370,7 +382,18 @@ function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     const messageContent = messageInput.value.trim();
 
-    if (!messageContent || !stompClient) return;
+    console.log('發送訊息:', {
+        content: messageContent,
+        chatType: chatType,
+        selectedUser: selectedUser,
+        groupId: groupId,
+        stompConnected: stompClient ? stompClient.connected : false
+    });
+
+    if (!messageContent || !stompClient) {
+        console.warn('訊息內容為空或 WebSocket 未連接');
+        return;
+    }
 
     if (chatType === 'private' && selectedUser) {
         // 發送私人訊息
@@ -387,6 +410,9 @@ function sendMessage() {
             content: messageContent
         };
         stompClient.send("/app/chat.sendGroupMessage", {}, JSON.stringify(message));
+    } else {
+        console.error('無效的聊天配置:', { chatType, selectedUser, groupId });
+        return;
     }
 
     messageInput.value = '';
@@ -450,9 +476,15 @@ function handleIncomingPrivateMessage(messageData) {
 
 // 處理接收到的群組訊息
 function handleIncomingGroupMessage(messageData) {
-    if (messageData.messageType !== 'group') return;
+    console.log('收到群組訊息:', messageData);
+
+    if (messageData.messageType !== 'group') {
+        console.warn('訊息類型不是群組訊息:', messageData.messageType);
+        return;
+    }
 
     const messageGroupId = parseInt(messageData.groupId);
+    console.log('訊息群組ID:', messageGroupId, '當前群組ID:', selectedGroup);
 
     // 存儲訊息到對應的群組中
     if (!groupMessages.has(messageGroupId)) {
@@ -472,7 +504,15 @@ function handleIncomingGroupMessage(messageData) {
 
     // 如果當前正在此群組聊天，顯示訊息
     if (selectedGroup === messageGroupId && !isDuplicate) {
+        console.log('顯示群組訊息');
         displayGroupMessage(messageData);
+    } else {
+        console.log('不顯示訊息:', {
+            selectedGroup,
+            messageGroupId,
+            isDuplicate,
+            shouldDisplay: selectedGroup === messageGroupId && !isDuplicate
+        });
     }
 
     // 播放通知音效
@@ -514,7 +554,13 @@ function updateGroupMemberStatus(username, isOnline) {
 
 // 顯示群組訊息
 function displayGroupMessage(messageData) {
+    console.log('顯示群組訊息:', messageData);
+
     const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) {
+        console.error('找不到訊息容器');
+        return;
+    }
     const messageElement = document.createElement('div');
 
     const isSystemMessage = messageData.messageType === 'SYSTEM' ||
@@ -563,6 +609,8 @@ function displayGroupMessage(messageData) {
 
     messagesContainer.appendChild(messageElement);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    console.log('訊息已添加到 DOM');
 }
 
 // 顯示訊息在聊天界面

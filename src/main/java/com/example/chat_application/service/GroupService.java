@@ -403,14 +403,24 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public Optional<Group> findByIdWithMembers(Long id) {
-        Optional<Group> groupOpt = groupRepository.findById(id);
-        if (groupOpt.isPresent()) {
-            Group group = groupOpt.get();
-            // 強制初始化 members 集合
-            group.getMembers().size();
-            return Optional.of(group);
+        try {
+            // 使用 Repository 的 fetch join 查詢
+            Optional<Group> groupOpt = groupRepository.findByIdWithMembers(id);
+            if (groupOpt.isPresent()) {
+                Group group = groupOpt.get();
+                // 確保成員集合已初始化
+                group.getMembers().size(); // 這會觸發懶加載
+                System.out.println("成功載入群組 " + group.getName() + "，成員數: " + group.getMembers().size());
+                return Optional.of(group);
+            } else {
+                System.err.println("找不到群組 ID: " + id);
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            System.err.println("載入群組時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return Optional.empty();
         }
-        return Optional.empty();
     }
 
     @Transactional(readOnly = true)
@@ -424,12 +434,14 @@ public class GroupService {
     // 添加檢查用戶是否為群組成員的方法
     @Transactional(readOnly = true)
     public boolean isUserMemberOfGroup(Long groupId, User user) {
-        Optional<Group> groupOpt = groupRepository.findById(groupId);
-        if (groupOpt.isPresent()) {
-            Group group = groupOpt.get();
-            // 在事務內檢查成員資格
-            return group.getMembers().contains(user);
+        try {
+            boolean isMemberByQuery = groupRepository.isUserMemberOfGroup(groupId, user);
+            System.out.println("Repository 查詢結果 - 用戶 " + user.getUsername() + " 是群組 " + groupId + " 的成員: " + isMemberByQuery);
+            return isMemberByQuery;
+        } catch (Exception e) {
+            System.err.println("檢查群組成員時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 }

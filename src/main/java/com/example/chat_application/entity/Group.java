@@ -27,7 +27,7 @@ public class Group {
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "group_members",
             joinColumns = @JoinColumn(name = "group_id"),
