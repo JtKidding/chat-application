@@ -77,28 +77,54 @@ public class GroupService {
     }
 
     // 離開群組
+    @Transactional
     public boolean leaveGroup(Long groupId, User user) {
-        Optional<Group> groupOpt = groupRepository.findById(groupId);
-        if (groupOpt.isPresent()) {
-            Group group = groupOpt.get();
-
-            // 創建者不能離開群組（需要先轉移群組或解散群組）
-            if (group.isCreator(user)) {
-                throw new RuntimeException("群組創建者無法離開群組，請先轉移群組所有權或解散群組");
+        try {
+            Optional<Group> groupOpt = groupRepository.findByIdWithMembers(groupId);
+            if (groupOpt.isEmpty()) {
+                throw new RuntimeException("群組不存在");
             }
 
+            Group group = groupOpt.get();
+
+            // 檢查用戶是否為群組成員
+            if (!group.isMember(user)) {
+                throw new RuntimeException("您不是此群組的成員");
+            }
+
+            // 創建者不能直接離開群組（需要先轉移所有權或解散群組）
+            if (group.isCreator(user)) {
+                throw new RuntimeException("群組創建者無法直接離開群組。請先轉移群組所有權給其他成員，或者解散群組");
+            }
+
+            String groupName = group.getName();
+            String userName = user.getDisplayName();
+
+            // 從群組中移除成員
             group.removeMember(user);
             groupRepository.save(group);
 
             // 創建系統訊息：用戶離開
             Message systemMessage = new Message(group,
-                    user.getDisplayName() + " 離開了群組",
+                    userName + " 離開了群組",
                     Message.MessageType.SYSTEM);
             messageRepository.save(systemMessage);
 
+            System.out.println("用戶 " + userName + " 已離開群組 " + groupName);
+
+            // 通知其他群組成員（可選）
+            // 這裡可以通過 WebSocket 通知其他在線成員
+
             return true;
+
+        } catch (RuntimeException e) {
+            // 重新拋出業務邏輯異常
+            throw e;
+        } catch (Exception e) {
+            System.err.println("離開群組時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("離開群組失敗: " + e.getMessage());
         }
-        return false;
     }
 
     // 轉移群組所有權

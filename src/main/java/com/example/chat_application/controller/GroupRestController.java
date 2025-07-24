@@ -464,4 +464,45 @@ public class GroupRestController {
             return ResponseEntity.status(500).body(Map.of("error", "伺服器內部錯誤: " + e.getMessage()));
         }
     }
+
+    // 離開群組 API
+    @PostMapping("/{groupId}/leave")
+    public ResponseEntity<Map<String, Object>> leaveGroup(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        try {
+            String username = authentication.getName();
+            User currentUser = userService.findByUsername(username).orElse(null);
+
+            if (currentUser == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "用戶未認證"));
+            }
+
+            // 調用 GroupService 的 leaveGroup 方法
+            boolean success = groupService.leaveGroup(groupId, currentUser);
+
+            if (success) {
+                // 獲取群組名稱用於回應
+                Optional<Group> groupOpt = groupService.findById(groupId);
+                String groupName = groupOpt.map(Group::getName).orElse("群組");
+
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "已成功離開群組「" + groupName + "」",
+                        "groupId", groupId,
+                        "groupName", groupName
+                ));
+            } else {
+                return ResponseEntity.status(500).body(Map.of("error", "離開群組失敗"));
+            }
+
+        } catch (RuntimeException e) {
+            System.err.println("離開群組失敗: " + e.getMessage());
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("離開群組時發生未預期錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "伺服器內部錯誤: " + e.getMessage()));
+        }
+    }
 }

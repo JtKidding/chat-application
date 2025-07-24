@@ -61,16 +61,16 @@
 
                     <div class="group-actions">
                         <a th:href="@{/group/{id}(id=${group.id})}" class="btn btn-primary">進入聊天</a>
+
+                        <!-- 創建者可以看到設定按鈕 -->
                         <a th:if="${group.creator.username == currentUser.username}"
                            th:href="@{/groups/{id}/settings(id=${group.id})}"
                            class="btn btn-secondary">設定</a>
-                        <form th:if="${group.creator.username != currentUser.username}"
-                              th:action="@{/groups/{id}/leave(id=${group.id})}"
-                              method="post"
-                              style="display: inline;"
-                              onsubmit="return confirm('確定要離開這個群組嗎？')">
-                            <button type="submit" class="btn btn-danger">離開</button>
-                        </form>
+
+                        <!-- 非創建者可以看到離開按鈕 -->
+                        <button th:unless="${group.creator.username == currentUser.username}"
+                                th:onclick="'confirmLeaveGroupFromList(' + ${group.id} + ', \'' + ${group.name} + '\')'"
+                                class="btn btn-danger">離開</button>
                     </div>
                 </div>
 
@@ -169,6 +169,50 @@
     </div>
 
     <script>
+        function confirmLeaveGroupFromList(groupId, groupName) {
+            if (confirm(`⚠️ 確定要離開群組「${groupName}」嗎？\n\n離開後您將無法再接收群組訊息。`)) {
+                leaveGroupFromList(groupId, groupName);
+            }
+        }
+
+        function leaveGroupFromList(groupId, groupName) {
+            const leaveBtn = document.querySelector(`button[onclick*="confirmLeaveGroupFromList(${groupId}"]`);
+            if (leaveBtn) {
+                leaveBtn.textContent = '處理中...';
+                leaveBtn.disabled = true;
+            }
+
+            fetch(`/api/groups/${groupId}/leave`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json().then(data => {
+                            alert(`✅ ${data.message || '已成功離開群組'}`);
+                            // 重新載入頁面以更新群組列表
+                            window.location.reload();
+                        });
+                    } else {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.error || '離開群組失敗');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('離開群組錯誤:', error);
+                    alert('❌ 離開群組失敗: ' + error.message);
+
+                    if (leaveBtn) {
+                        leaveBtn.textContent = '離開';
+                        leaveBtn.disabled = false;
+                    }
+                });
+        }
+
         // 標籤頁切換
         function showTab(tabName) {
             // 隱藏所有標籤內容

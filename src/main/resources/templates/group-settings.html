@@ -305,7 +305,17 @@
         <section class="settings-section danger-section">
             <h3>危險操作</h3>
             <div class="danger-actions">
-                <div class="danger-item">
+                <!-- 離開群組選項（非創建者可見） -->
+                <div th:unless="${group.creator.username == currentUser.username}" class="danger-item">
+                    <div class="danger-info">
+                        <h4>離開群組</h4>
+                        <p>離開此群組，您將無法再接收群組訊息</p>
+                    </div>
+                    <button onclick="confirmLeaveGroup()" class="btn btn-danger">離開群組</button>
+                </div>
+
+                <!-- 解散群組選項（創建者可見） -->
+                <div th:if="${group.creator.username == currentUser.username}" class="danger-item">
                     <div class="danger-info">
                         <h4>解散群組</h4>
                         <p>永久刪除這個群組和所有聊天記錄</p>
@@ -552,6 +562,63 @@
             document.getElementById('uploadBtn').style.display = 'inline-block';
         }
     });
+
+    // 確認離開群組
+    function confirmLeaveGroup() {
+        if (confirm(`⚠️ 確定要離開群組「${groupName}」嗎？\n\n離開後您將：\n• 無法接收群組訊息\n• 無法參與群組討論\n• 需要重新邀請才能加入\n\n確定要繼續嗎？`)) {
+            leaveGroup();
+        }
+    }
+
+    // 執行離開群組
+    function leaveGroup() {
+        const leaveBtn = document.querySelector('button[onclick="confirmLeaveGroup()"]');
+        if (leaveBtn) {
+            leaveBtn.textContent = '處理中...';
+            leaveBtn.disabled = true;
+            leaveBtn.style.opacity = '0.5';
+        }
+
+        showLoadingMessage('正在離開群組，請稍候...');
+
+        fetch(`/api/groups/${groupId}/leave`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                console.log('離開群組 API 回應狀態:', response.status);
+
+                if (response.ok) {
+                    return response.json().then(data => {
+                        console.log('離開群組成功:', data);
+                        hideLoadingMessage();
+                        alert(`✅ ${data.message || '已成功離開群組'}`);
+                        window.location.href = '/groups';
+                    });
+                } else {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.error || `離開失敗: HTTP ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`離開失敗: HTTP ${response.status}`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('離開群組錯誤:', error);
+                hideLoadingMessage();
+
+                if (leaveBtn) {
+                    leaveBtn.textContent = '離開群組';
+                    leaveBtn.disabled = false;
+                    leaveBtn.style.opacity = '1';
+                }
+
+                alert('❌ 離開群組失敗: ' + error.message);
+            });
+    }
 
     // 移除成員功能
     function removeMember(userId, userName) {

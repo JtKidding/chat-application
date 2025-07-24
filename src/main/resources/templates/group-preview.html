@@ -1,200 +1,200 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>群組預覽 - <span th:text="${group.name}"></span></title>
-        <link rel="stylesheet" href="/css/groups.css">
-    </head>
-    <body>
-        <div class="preview-container">
-            <!-- 返回按鈕 -->
-            <div style="margin-bottom: 2rem;">
-                <a href="/invitations" class="btn btn-secondary">← 返回邀請列表</a>
-            </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群組預覽 - <span th:text="${group.name}"></span></title>
+    <link rel="stylesheet" href="/css/groups.css">
+</head>
+<body>
+<div class="preview-container">
+    <!-- 返回按鈕 -->
+    <div style="margin-bottom: 2rem;">
+        <a href="/invitations" class="btn btn-secondary">← 返回邀請列表</a>
+    </div>
 
-            <!-- 邀請資訊 -->
-            <div th:if="${invitation}" class="invitation-info">
-                <div class="invitation-message" th:if="${invitation.message}">
-                    💬 "<span th:text="${invitation.message}"></span>"
-                </div>
-                <div class="invitation-from">
-                    👤 <span th:text="${invitation.inviter.displayName}"></span> 邀請您加入此群組
-                </div>
-            </div>
+    <!-- 邀請資訊 -->
+    <div th:if="${invitation != null}" class="invitation-info">
+        <div class="invitation-message" th:if="${invitation.message != null and !invitation.message.isEmpty()}">
+            💬 "<span th:text="${invitation.message}"></span>"
+        </div>
+        <div class="invitation-from">
+            👤 <span th:text="${invitation.inviter.displayName}"></span> 邀請您加入此群組
+        </div>
+    </div>
 
-            <!-- 群組基本資訊 -->
-            <div class="preview-card">
-                <div class="group-header">
-                    <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
-                         alt="群組頭像" class="group-avatar-large">
-                    <div class="group-info">
-                        <h1 class="group-name" th:text="${group.name}"></h1>
-                        <div class="group-meta">
+    <!-- 群組基本資訊 -->
+    <div class="preview-card">
+        <div class="group-header">
+            <img th:src="${group.avatarUrl != null ? '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1) : '/images/default-group.png'}"
+                 alt="群組頭像" class="group-avatar-large">
+            <div class="group-info">
+                <h1 class="group-name" th:text="${group.name}"></h1>
+                <div class="group-meta">
                                 <span class="meta-badge">
                                     👥 <span th:text="${group.members.size()}"></span> 位成員
                                 </span>
-                            <span class="meta-badge">
+                    <span class="meta-badge">
                                     📅 創建於 <span th:text="${#temporals.format(group.createdAt, 'yyyy-MM-dd')}"></span>
                                 </span>
-                            <span class="meta-badge" th:if="${group.private}">
+                    <span class="meta-badge" th:if="${group.private}">
                                     🔒 私人群組
                                 </span>
-                            <span class="meta-badge" th:unless="${group.private}">
+                    <span class="meta-badge" th:unless="${group.private}">
                                     🌐 公開群組
                                 </span>
-                        </div>
-                        <div class="group-description" th:if="${group.description}">
-                            <p th:text="${group.description}"></p>
-                        </div>
-                        <div class="group-description" th:unless="${group.description}">
-                            <p style="color: #999; font-style: italic;">此群組沒有描述</p>
-                        </div>
-                    </div>
                 </div>
-
-                <!-- 群組統計 -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-number" th:text="${group.members.size()}"></span>
-                        <span class="stat-label">成員數量</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" th:text="${group.private ? '私人' : '公開'}"></span>
-                        <span class="stat-label">群組類型</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" th:text="${group.maxMembers}"></span>
-                        <span class="stat-label">最大成員</span>
-                    </div>
+                <div class="group-description" th:if="${group.description}">
+                    <p th:text="${group.description}"></p>
                 </div>
-            </div>
-
-            <!-- 成員列表 -->
-            <div class="preview-card">
-                <div class="members-section">
-                    <h2 class="section-title">
-                        👥 群組成員 (<span th:text="${group.members.size()}"></span>)
-                    </h2>
-                    <div class="members-grid">
-                        <div th:each="member : ${group.members}" class="member-card">
-                            <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
-                                 alt="成員頭像" class="member-avatar">
-                            <div class="member-name" th:text="${member.displayName}"></div>
-                            <div class="member-status">
-                                <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
-                                <span th:unless="${group.creator.equals(member)}"
-                                      th:text="${member.online ? '線上' : '離線'}"
-                                      th:style="${member.online ? 'color: #28a745;' : 'color: #6c757d;'}"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 操作區域 -->
-            <div class="actions-section">
-                <h2 class="actions-title">準備加入這個群組了嗎？</h2>
-                <p class="actions-subtitle">加入後您就可以與群組成員聊天交流了</p>
-                <div class="action-buttons">
-                    <div th:if="${invitation and invitation.isPending()}">
-                        <button onclick="acceptInvitation()" class="btn-white">
-                            ✅ 接受邀請
-                        </button>
-                        <button onclick="declineInvitation()" class="btn-outline-white">
-                            ❌ 拒絕邀請
-                        </button>
-                    </div>
-                    <div th:unless="${invitation and invitation.isPending()}">
-                        <div th:if="${!group.private}">
-                            <form th:action="@{/groups/{id}/join(id=${group.id})}" method="post" style="display: inline;">
-                                <button type="submit" class="btn-white">
-                                    🚀 加入群組
-                                </button>
-                            </form>
-                        </div>
-                        <div th:if="${group.private}">
-                                <span class="btn-outline-white" style="cursor: not-allowed; opacity: 0.7;">
-                                    🔒 私人群組需要邀請
-                                </span>
-                        </div>
-                    </div>
-                    <a href="/invitations" class="btn-outline-white">
-                        📋 查看所有邀請
-                    </a>
+                <div class="group-description" th:unless="${group.description}">
+                    <p style="color: #999; font-style: italic;">此群組沒有描述</p>
                 </div>
             </div>
         </div>
 
-        <script th:inline="javascript">
-            var invitationId = /*[[${invitation?.id}]]*/ null;
-            var groupId = /*[[${group.id}]]*/ null;
+        <!-- 群組統計 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number" th:text="${group.members.size()}"></span>
+                <span class="stat-label">成員數量</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" th:text="${group.private ? '私人' : '公開'}"></span>
+                <span class="stat-label">群組類型</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" th:text="${group.maxMembers}"></span>
+                <span class="stat-label">最大成員</span>
+            </div>
+        </div>
+    </div>
 
-            // 接受邀請
-            function acceptInvitation() {
-                if (!invitationId) {
-                    alert('無效的邀請');
-                    return;
-                }
+    <!-- 成員列表 -->
+    <div class="preview-card">
+        <div class="members-section">
+            <h2 class="section-title">
+                👥 群組成員 (<span th:text="${group.members.size()}"></span>)
+            </h2>
+            <div class="members-grid">
+                <div th:each="member : ${group.members}" class="member-card">
+                    <img th:src="${member.avatarUrl != null ? '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1) : '/images/default-avatar.png'}"
+                         alt="成員頭像" class="member-avatar">
+                    <div class="member-name" th:text="${member.displayName}"></div>
+                    <div class="member-status">
+                        <span th:if="${group.creator.equals(member)}" class="creator-badge">創建者</span>
+                        <span th:unless="${group.creator.equals(member)}"
+                              th:text="${member.online ? '線上' : '離線'}"
+                              th:style="${member.online ? 'color: #28a745;' : 'color: #6c757d;'}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                if (!confirm('確定要接受這個群組邀請嗎？')) {
-                    return;
-                }
+    <!-- 操作區域 -->
+    <div class="actions-section">
+        <h2 class="actions-title">準備加入這個群組了嗎？</h2>
+        <p class="actions-subtitle">加入後您就可以與群組成員聊天交流了</p>
+        <div class="action-buttons">
+            <div th:if="${invitation != null and invitation.isPending()}">
+                <button onclick="acceptInvitation()" class="btn-white">
+                    ✅ 接受邀請
+                </button>
+                <button onclick="declineInvitation()" class="btn-outline-white">
+                    ❌ 拒絕邀請
+                </button>
+            </div>
+            <div th:unless="${invitation != null and invitation.isPending()}">
+                <div th:if="${!group.private}">
+                    <form th:action="@{/groups/{id}/join(id=${group.id})}" method="post" style="display: inline;">
+                        <button type="submit" class="btn-white">
+                            🚀 加入群組
+                        </button>
+                    </form>
+                </div>
+                <div th:if="${group.private}">
+                                <span class="btn-outline-white" style="cursor: not-allowed; opacity: 0.7;">
+                                    🔒 私人群組需要邀請
+                                </span>
+                </div>
+            </div>
+            <a href="/invitations" class="btn-outline-white">
+                📋 查看所有邀請
+            </a>
+        </div>
+    </div>
+</div>
 
-                fetch(`/api/invitations/${invitationId}/accept`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('✅ ' + data.message);
-                            // 跳轉到群組聊天
-                            window.location.href = `/group/${groupId}`;
-                        } else {
-                            alert('❌ ' + data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('接受邀請錯誤:', error);
-                        alert('接受邀請失敗，請稍後再試');
-                    });
+<script th:inline="javascript">
+    var invitationId = /*[[${invitation?.id}]]*/ null;
+    var groupId = /*[[${group.id}]]*/ null;
+
+    // 接受邀請
+    function acceptInvitation() {
+        if (!invitationId) {
+            alert('無效的邀請');
+            return;
+        }
+
+        if (!confirm('確定要接受這個群組邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/accept`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             }
-
-            // 拒絕邀請
-            function declineInvitation() {
-                if (!invitationId) {
-                    alert('無效的邀請');
-                    return;
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    // 跳轉到群組聊天
+                    window.location.href = `/group/${groupId}`;
+                } else {
+                    alert('❌ ' + data.error);
                 }
+            })
+            .catch(error => {
+                console.error('接受邀請錯誤:', error);
+                alert('接受邀請失敗，請稍後再試');
+            });
+    }
 
-                if (!confirm('確定要拒絕這個群組邀請嗎？')) {
-                    return;
-                }
+    // 拒絕邀請
+    function declineInvitation() {
+        if (!invitationId) {
+            alert('無效的邀請');
+            return;
+        }
 
-                fetch(`/api/invitations/${invitationId}/decline`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('已拒絕邀請');
-                            // 返回邀請列表
-                            window.location.href = '/invitations';
-                        } else {
-                            alert('❌ ' + data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('拒絕邀請錯誤:', error);
-                        alert('拒絕邀請失敗，請稍後再試');
-                    });
+        if (!confirm('確定要拒絕這個群組邀請嗎？')) {
+            return;
+        }
+
+        fetch(`/api/invitations/${invitationId}/decline`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             }
-        </script>
-    </body>
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('已拒絕邀請');
+                    // 返回邀請列表
+                    window.location.href = '/invitations';
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('拒絕邀請錯誤:', error);
+                alert('拒絕邀請失敗，請稍後再試');
+            });
+    }
+</script>
+</body>
 </html>

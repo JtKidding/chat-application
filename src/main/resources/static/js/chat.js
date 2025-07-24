@@ -839,6 +839,57 @@ function updateUserPreview(username, messageData) {
     });
 }
 
+function confirmLeaveGroupFromChat() {
+    if (confirm(`⚠️ 確定要離開群組「${groupName}」嗎？\n\n離開後您將無法再接收群組訊息。`)) {
+        leaveGroupFromChat();
+    }
+}
+
+function leaveGroupFromChat() {
+    const leaveBtn = document.querySelector('button[onclick="confirmLeaveGroupFromChat()"]');
+    if (leaveBtn) {
+        leaveBtn.textContent = '處理中...';
+        leaveBtn.disabled = true;
+    }
+
+    fetch(`/api/groups/${groupId}/leave`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json().then(data => {
+                    alert(`✅ ${data.message || '已成功離開群組'}`);
+                    // 斷開 WebSocket 連接
+                    if (stompClient) {
+                        stompClient.send("/app/chat.leaveGroup", {}, JSON.stringify({
+                            groupId: groupId.toString()
+                        }));
+                        stompClient.disconnect();
+                    }
+                    // 跳轉到群組列表
+                    window.location.href = '/groups';
+                });
+            } else {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.error || '離開群組失敗');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('離開群組錯誤:', error);
+            alert('❌ 離開群組失敗: ' + error.message);
+
+            if (leaveBtn) {
+                leaveBtn.textContent = '🚪 離開';
+                leaveBtn.disabled = false;
+            }
+        });
+}
+
 // 顯示狀態通知
 function showStatusNotification(message, type = 'info') {
     const notification = document.createElement('div');

@@ -113,12 +113,10 @@
                          (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
                          '/images/default-group.png'}"
                      alt="群組頭像"
-                     class="chat-header-avatar"
-                     style="width: 40px !important; height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 2px solid #667eea !important; margin-right: 15px !important;"
-                     onerror="this.src='/images/default-group.png'; console.log('聊天標題群組頭像載入失敗');">
+                     class="chat-header-avatar">
                 <div class="chat-header-info">
                     <h3 th:text="${group.name}"></h3>
-                    <p th:text="${group.members.size()} + ' 位成員'"></p>
+                    <p th:text="${group.members.size()} + '位成員'"></p>
                 </div>
                 <div class="group-actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
                     <!-- 只有群組成員可以看到邀請按鈕 -->
@@ -131,6 +129,15 @@
                        class="btn btn-secondary btn-sm" title="群組設定">
                         ⚙️ 設定
                     </a>
+                </div>
+                <!-- 非創建者專用按鈕 -->
+                <div th:unless="${group.creator.username == currentUser.username}">
+                    <button onclick="confirmLeaveGroupFromChat()"
+                            class="btn btn-danger btn-sm"
+                            title="離開群組"
+                            style="background: #dc3545; color: white;">
+                        🚪 離開
+                    </button>
                 </div>
             </div>
         </div>
