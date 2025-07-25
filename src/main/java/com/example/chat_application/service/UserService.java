@@ -60,6 +60,17 @@ public class UserService {
             user.setOnline(online);
             user.setLastSeen(LocalDateTime.now());
             userRepository.save(user);
+
+            System.out.println("用戶 " + username + " 狀態更新為: " + (online ? "線上" : "離線"));
+        }
+    }
+
+    public void updateLastSeen(String username) {
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setLastSeen(LocalDateTime.now());
+            userRepository.save(user);
         }
     }
 

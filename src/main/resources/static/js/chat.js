@@ -60,11 +60,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 建立WebSocket連接
 function connect() {
+    console.log('建立 WebSocket 連接...');
     const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
 
     stompClient.connect({}, function(frame) {
         console.log('Connected: ' + frame);
+
+        // 啟動心跳檢測
+        startHeartbeat();
 
         if (chatType === 'private') {
             console.log('訂閱私人訊息');
@@ -72,7 +76,6 @@ function connect() {
             stompClient.subscribe('/user/queue/messages', function(message) {
                 console.log('收到私人訊息原始數據:', message.body);
                 const messageData = JSON.parse(message.body);
-                // handleIncomingMessage(messageData);
                 handleIncomingPrivateMessage(messageData);
             });
         } else if (chatType === 'group') {
@@ -119,6 +122,55 @@ function connect() {
     });
 }
 
+// 心跳檢測
+function startHeartbeat() {
+    heartbeatInterval = setInterval(function() {
+        if (stompClient && stompClient.connected) {
+            // 發送心跳
+            try {
+                stompClient.send("/app/chat.heartbeat", {}, JSON.stringify({
+                    username: currentUser,
+                    timestamp: new Date().toISOString()
+                }));
+            } catch (error) {
+                console.error('心跳發送失敗:', error);
+                handleConnectionError();
+            }
+        } else {
+            console.warn('WebSocket 連接已斷開，停止心跳');
+            stopHeartbeat();
+            handleConnectionError();
+        }
+    }, 30000); // 每30秒發送一次心跳
+}
+
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
+
+// 處理連接錯誤
+function handleConnectionError() {
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // 指數退避，最大30秒
+
+        console.log(`嘗試重新連接 (${reconnectAttempts}/${maxReconnectAttempts})，${delay}ms 後重試...`);
+        showStatusNotification(`連接斷開，${delay/1000}秒後重新連接...`, 'warning');
+
+        setTimeout(() => {
+            if (!stompClient || !stompClient.connected) {
+                connect();
+            }
+        }, delay);
+    } else {
+        console.error('達到最大重連次數，停止重連');
+        showStatusNotification('連接失敗，請重新整理頁面', 'error');
+    }
+}
+
 // 設置事件監聽器
 function setupEventListeners() {
     const messageInput = document.getElementById('messageInput');
@@ -138,17 +190,8 @@ function setupEventListeners() {
 
     // 頁面關閉時斷開連接
     window.addEventListener('beforeunload', function() {
-        if (stompClient) {
-            if (chatType === 'group' && groupId) {
-                stompClient.send("/app/chat.leaveGroup", {}, JSON.stringify({
-                    groupId: groupId.toString()
-                }));
-            }
-            stompClient.send("/app/chat.removeUser", {}, JSON.stringify({
-                username: currentUser
-            }));
-            stompClient.disconnect();
-        }
+        console.log('頁面即將關閉，清理連接...');
+        disconnect();
     });
 }
 
@@ -891,7 +934,13 @@ function leaveGroupFromChat() {
 }
 
 // 顯示狀態通知
-function showStatusNotification(message, type = 'info') {
+function showStatusNotification(message, type = 'info', duration = 3000) {
+    // 移除現有通知
+    const existingNotification = document.querySelector('.status-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
     const notification = document.createElement('div');
     notification.className = `status-notification ${type}`;
     notification.textContent = message;
@@ -899,31 +948,47 @@ function showStatusNotification(message, type = 'info') {
         position: fixed;
         top: 20px;
         right: 20px;
-        padding: 10px 15px;
-        border-radius: 5px;
+        padding: 12px 20px;
+        border-radius: 8px;
         color: white;
         font-size: 14px;
         z-index: 1000;
         animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        word-wrap: break-word;
     `;
 
-    if (type === 'success') {
-        notification.style.background = '#27ae60';
-    } else if (type === 'info') {
-        notification.style.background = '#3498db';
+    // 根據類型設置顏色
+    switch(type) {
+        case 'success':
+            notification.style.background = '#28a745';
+            break;
+        case 'warning':
+            notification.style.background = '#ffc107';
+            notification.style.color = '#212529';
+            break;
+        case 'error':
+            notification.style.background = '#dc3545';
+            break;
+        default:
+            notification.style.background = '#17a2b8';
     }
 
     document.body.appendChild(notification);
 
-    // 3秒後自動移除
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease-out';
+    // 自動移除
+    if (duration > 0) {
         setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
             }
-        }, 300);
-    }, 3000);
+        }, duration);
+    }
 }
 
 // 播放通知音效
@@ -959,8 +1024,27 @@ function escapeHtml(text) {
 
 // 斷開連接
 function disconnect() {
+    stopHeartbeat();
+
     if (stompClient !== null) {
-        stompClient.disconnect();
+        try {
+            // 發送離線通知
+            if (chatType === 'group' && groupId) {
+                stompClient.send("/app/chat.leaveGroup", {}, JSON.stringify({
+                    groupId: groupId.toString()
+                }));
+            }
+
+            stompClient.send("/app/chat.removeUser", {}, JSON.stringify({
+                username: currentUser
+            }));
+
+            stompClient.disconnect(function() {
+                console.log('WebSocket 連接已斷開');
+            });
+        } catch (error) {
+            console.error('斷開連接時發生錯誤:', error);
+        }
     }
     console.log("Disconnected");
 }
@@ -1151,16 +1235,36 @@ function checkNetworkStatus() {
     }
 }
 
-// 監聽網絡狀態變化
-window.addEventListener('online', function() {
-    showStatusNotification('網絡連接已恢復', 'success');
-    if (!stompClient || !stompClient.connected) {
-        reconnect();
+// 頁面可見性變化處理
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        console.log('頁面已隱藏');
+        // 頁面隱藏時不立即斷開，因為用戶可能只是切換標籤
+    } else {
+        console.log('頁面已顯示');
+        // 頁面重新顯示時檢查連接狀態
+        if (!stompClient || !stompClient.connected) {
+            console.log('檢測到連接斷開，嘗試重新連接');
+            connect();
+        }
     }
 });
 
+// 監聽網絡狀態變化
+window.addEventListener('online', function() {
+    console.log('網路已恢復');
+    showStatusNotification('網路已恢復，正在重新連接...', 'success');
+    setTimeout(() => {
+        if (!stompClient || !stompClient.connected) {
+            connect();
+        }
+    }, 1000);
+});
+
 window.addEventListener('offline', function() {
-    showStatusNotification('網絡連接已斷開', 'error');
+    console.log('網路已斷開');
+    showStatusNotification('網路連接已斷開', 'error');
+    stopHeartbeat();
 });
 
 // 定期檢查連接狀態

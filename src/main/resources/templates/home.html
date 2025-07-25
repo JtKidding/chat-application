@@ -176,8 +176,12 @@
             </main>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script th:inline="javascript">
+        var currentUser = /*[[${currentUser.username}]]*/ '';
+        var stompClient = null;
 
-    <script>
         // 下拉選單功能
         document.querySelector('.dropdown-btn').addEventListener('click', function() {
             document.querySelector('.dropdown-content').classList.toggle('show');
@@ -210,12 +214,84 @@
                 });
         }
 
+        // 全局線上狀態管理
+        function initializeGlobalStatus() {
+            console.log('初始化全局線上狀態管理...');
+
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function(frame) {
+                console.log('全局 WebSocket 連接成功:', frame);
+
+                // 訂閱用戶狀態更新
+                stompClient.subscribe('/topic/public', function(message) {
+                    const messageData = JSON.parse(message.body);
+                    handleGlobalStatusChange(messageData);
+                });
+
+                // 通知伺服器用戶已上線
+                stompClient.send("/app/chat.addUser", {}, JSON.stringify({
+                    username: currentUser
+                }));
+
+            }, function(error) {
+                console.error('全局 WebSocket 連接錯誤:', error);
+            });
+        }
+
+        // 處理全局狀態變化
+        function handleGlobalStatusChange(messageData) {
+            console.log('收到全局狀態變化:', messageData);
+
+            if (messageData.type === 'USER_ONLINE') {
+                updateUserStatus(messageData.username, true);
+            } else if (messageData.type === 'USER_OFFLINE') {
+                updateUserStatus(messageData.username, false);
+            }
+        }
+
+        // 更新頁面中的用戶狀態顯示
+        function updateUserStatus(username, isOnline) {
+            // 更新聊天夥伴列表中的狀態
+            const chatItems = document.querySelectorAll('.chat-item');
+            chatItems.forEach(item => {
+                const nameElement = item.querySelector('.chat-name');
+                const statusElement = item.querySelector('.chat-status');
+
+                if (nameElement && nameElement.textContent.includes(username)) {
+                    if (statusElement) {
+                        statusElement.textContent = isOnline ? '線上' : '離線';
+                        statusElement.style.color = isOnline ? '#28a745' : '#6c757d';
+                    }
+                }
+            });
+        }
+
+        // 頁面關閉前的清理
+        window.addEventListener('beforeunload', function() {
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/chat.removeUser", {}, JSON.stringify({
+                    username: currentUser
+                }));
+                stompClient.disconnect();
+            }
+        });
+
         // 頁面載入時獲取通知
         document.addEventListener('DOMContentLoaded', function() {
+            // 延遲一秒初始化 WebSocket，確保頁面載入完成
+            setTimeout(initializeGlobalStatus, 1000);
             loadInvitationNotifications();
 
-            // 每30秒更新一次通知
-            setInterval(loadInvitationNotifications, 30000);
+            // 定期檢查連接狀態
+            setInterval(function() {
+                if (!stompClient || !stompClient.connected) {
+                    console.log('檢測到全局連接斷開，嘗試重新連接...');
+                    initializeGlobalStatus();
+                }
+                loadInvitationNotifications();
+            }, 30000); // 每30秒檢查一次
         });
     </script>
 </body>

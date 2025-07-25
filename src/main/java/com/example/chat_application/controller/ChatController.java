@@ -325,4 +325,22 @@ public class ChatController {
             System.err.println("無效的群組ID: " + groupIdStr);
         }
     }
+
+    @MessageMapping("/chat.heartbeat")
+    public void handleHeartbeat(@Payload Map<String, String> payload, Principal principal) {
+        String username = principal.getName();
+        String timestamp = payload.get("timestamp");
+
+        try {
+            // 更新用戶的最後活動時間
+            userService.updateLastSeen(username);
+
+            // 確保用戶狀態為線上
+            userService.setUserOnline(username, true);
+
+            System.out.println("收到用戶 " + username + " 的心跳，時間: " + timestamp);
+        } catch (Exception e) {
+            System.err.println("處理心跳時發生錯誤: " + e.getMessage());
+        }
+    }
 }

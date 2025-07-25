@@ -19,6 +19,12 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
+    @Autowired
+    private CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+
+    @Autowired
+    private CustomLogoutSuccessHandler logoutSuccessHandler;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -36,12 +42,14 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")                                            // 自定義登入頁面
-                        .defaultSuccessUrl("/home", true)       // 登入成功後跳轉
+//                        .defaultSuccessUrl("/home", true)       // 登入成功後跳轉
+                        .successHandler(authenticationSuccessHandler)                   // 使用自定義成功處理器
                         .failureUrl("/login?error=true")             // 登入失敗跳轉
                         .permitAll()
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/login?logout")      // 登出成功後跳轉
+                        .logoutSuccessHandler(logoutSuccessHandler)                    // 使用自定義登出處理器
+//                        .logoutSuccessUrl("/login?logout")      // 登出成功後跳轉
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()

@@ -112,9 +112,7 @@ public class WebController {
     }
 
     @GetMapping("/logout")
-    public String logout(HttpServletRequest request, HttpServletResponse response) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
+    public String logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         if (authentication != null) {
             // 設置用戶為離線狀態
             try {

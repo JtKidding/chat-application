@@ -79,9 +79,7 @@
             <div th:each="member : ${group.members}" class="user-item">
                 <div class="user-avatar">
                     <!-- 改進的頭像URL處理邏輯 -->
-                    <img th:src="${member.avatarUrl != null and !#strings.isEmpty(member.avatarUrl) ?
-                             (member.avatarUrl.startsWith('/uploads/') ? member.avatarUrl : '/uploads/avatars/' + member.avatarUrl.substring(member.avatarUrl.lastIndexOf('/') + 1)) :
-                             '/images/default-avatar.png'}"
+                    <img th:src="${member.avatarUrl}"
                          alt="成員頭像"
                          class="avatar-img"
                          onerror="this.src='/images/default-avatar.png'; console.log('成員頭像載入失敗: ' + this.getAttribute('alt'));"
@@ -109,9 +107,7 @@
             </div>
             <div th:if="${chatType == 'group'}" class="group-chat-header">
                 <!-- 修復右側聊天標題的群組頭像顯示 -->
-                <img th:src="${group.avatarUrl != null and !#strings.isEmpty(group.avatarUrl) ?
-                         (group.avatarUrl.startsWith('/uploads/') ? group.avatarUrl : '/uploads/groups/' + group.avatarUrl.substring(group.avatarUrl.lastIndexOf('/') + 1)) :
-                         '/images/default-group.png'}"
+                <img th:src="${group.avatarUrl}"
                      alt="群組頭像"
                      class="chat-header-avatar">
                 <div class="chat-header-info">
